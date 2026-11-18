@@ -10,11 +10,11 @@ struct TimerTransport: View {
             }
             .buttonStyle(.borderedProminent).tint(.primary)
             .help(state.text(state.transportTitle)).accessibilityLabel(state.text(state.transportTitle))
-            .disabled(state.timer.remaining == 0)
+            .disabled(state.timer.remaining == 0 || !state.storageReady)
             Button { state.resetTimer() } label: {
                 Image(systemName: "arrow.counterclockwise").frame(width: 28, height: 32)
             }
-            .buttonStyle(.borderless).disabled(!state.hasProgress && !state.timer.isRunning)
+            .buttonStyle(.borderless).disabled((!state.hasProgress && !state.timer.isRunning) || !state.storageReady)
             .help(state.text("reset")).accessibilityLabel(state.text("reset"))
         }
     }
@@ -28,6 +28,10 @@ struct MiniTimerView: View {
                 .font(.caption).foregroundStyle(.secondary)
             Text(state.digits).font(.system(size: 43, weight: .medium, design: .monospaced)).monospacedDigit()
             TimerTransport(state: state)
+            if state.storageError != nil {
+                Button(state.text("retryStorage")) { state.retryStorage() }.font(.caption)
+                    .help(state.text("storageErrorTitle"))
+            }
         }.padding(22).frame(maxWidth: .infinity, maxHeight: .infinity)
             .background(Color(nsColor: .windowBackgroundColor))
             .preferredColorScheme(state.theme.scheme)

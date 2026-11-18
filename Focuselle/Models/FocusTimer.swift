@@ -2,12 +2,21 @@ import Foundation
 
 /// The display tick is only a refresh signal. A monotonic clock measures active work.
 struct FocusTimer {
-    enum Phase: String { case focus, shortBreak, longBreak }
+    enum Phase: String, Codable { case focus, shortBreak, longBreak }
     private(set) var phase: Phase = .focus
     private(set) var duration: TimeInterval = 25 * 60
     private(set) var remaining: TimeInterval = 25 * 60
     private(set) var isRunning = false
     private var deadline: TimeInterval?
+
+    init() {}
+
+    /// A restored timer never counts time spent without the process running.
+    init(phase: Phase, duration: Double, remaining: Double) {
+        self.phase = phase
+        self.duration = duration
+        self.remaining = remaining
+    }
 
     mutating func toggle(now: TimeInterval) {
         if isRunning {

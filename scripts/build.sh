@@ -8,7 +8,7 @@ sources=()
 while IFS= read -r file; do sources+=("$file"); done < <(find Focuselle -name '*.swift' -print | sort)
 xcrun swiftc -parse-as-library -swift-version 5 -target "$(uname -m)-apple-macosx14.0" \
     -module-cache-path "$PWD/.build/module-cache" \
-    "${sources[@]}" -o "$app/Contents/MacOS/Focuselle"
+    "${sources[@]}" -lsqlite3 -o "$app/Contents/MacOS/Focuselle"
 cp Focuselle/Info.plist "$app/Contents/Info.plist"
 # CLT does not ship xcstringstool. Compile the same catalog into .strings here.
 python3 - "$app/Contents/Resources" <<'PY'

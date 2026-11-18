@@ -14,6 +14,7 @@ struct WorkspaceView: View {
                         .font(.callout).foregroundStyle(.secondary)
                     Text(state.text(state.screen.rawValue))
                         .font(.system(size: 44, weight: .medium)).tracking(-2)
+                    StorageStatusView(state: state)
                     content
                 }
                 .padding(40)
@@ -71,9 +72,9 @@ struct WorkspaceView: View {
                 .datePickerStyle(.graphical)
             StageNotice(state: state, icon: "calendar", title: "calendarNext", detail: "calendarDetail")
         case .tasks:
-            StageNotice(state: state, icon: "checklist", title: "tasksNext", detail: "tasksDetail")
+            TasksView(state: state)
         case .statistics:
-            StageNotice(state: state, icon: "chart.bar", title: "statisticsNext", detail: "statisticsDetail")
+            SessionHistoryView(state: state)
         case .sounds:
             StageNotice(state: state, icon: "headphones", title: "soundsNext", detail: "soundsDetail")
         }
@@ -82,13 +83,13 @@ struct WorkspaceView: View {
     private var focus: some View {
         VStack(spacing: 28) {
             HStack(spacing: 8) {
-                ForEach([25, 50, 90], id: \.self) { minutes in
-                    Button("\(minutes) / \(minutes == 25 ? 5 : 10)") {
-                        state.selectPreset(work: minutes, rest: minutes == 25 ? 5 : 10)
+                ForEach(state.presets.filter(\.isPinned)) { preset in
+                    Button("\(preset.focusMinutes) / \(preset.shortBreakMinutes)") {
+                        state.selectPreset(work: preset.focusMinutes, rest: preset.shortBreakMinutes)
                     }
                     .buttonStyle(.bordered)
-                    .tint(state.workMinutes == minutes ? .primary : .secondary)
-                    .disabled(state.timer.isRunning || state.hasProgress)
+                    .tint(state.workMinutes == preset.focusMinutes ? .primary : .secondary)
+                    .disabled(state.timer.isRunning || state.hasProgress || !state.storageReady)
                 }
                 Spacer()
             }
@@ -119,7 +120,11 @@ struct WorkspaceView: View {
             HStack {
                 VStack(alignment: .leading, spacing: 7) {
                     Text(state.text("currentTask")).font(.caption).foregroundStyle(.secondary)
-                    Text(state.text("withoutTask")).font(.body)
+                    Text(state.currentTaskTitle ?? state.text("withoutTask")).font(.body)
+                    if state.currentTaskTitle != nil {
+                        Button(state.text("withoutTask")) { state.chooseTask(nil) }
+                            .buttonStyle(.link).disabled(state.timer.isRunning || state.hasProgress || !state.storageReady)
+                    }
                 }
                 Spacer()
                 Label(state.text("silence"), systemImage: "speaker.slash")
@@ -133,7 +138,7 @@ struct WorkspaceView: View {
     private func phaseButton(_ title: String, phase: FocusTimer.Phase) -> some View {
         Button(state.text(title)) { state.selectPhase(phase) }
             .buttonStyle(.bordered).tint(state.timer.phase == phase ? .primary : .secondary)
-            .disabled(state.timer.isRunning || state.hasProgress)
+            .disabled(state.timer.isRunning || state.hasProgress || !state.storageReady)
     }
 
     private var dayPlan: some View {
@@ -144,9 +149,9 @@ struct WorkspaceView: View {
             DatePicker(state.text("planDate"), selection: $state.selectedDate, displayedComponents: .date)
                 .labelsHidden().datePickerStyle(.field)
             Divider()
-            Image(systemName: "checklist").font(.system(size: 28)).foregroundStyle(.tertiary)
-            Text(state.text("emptyPlan")).font(.headline)
-            Text(state.text("planDetail")).font(.callout).foregroundStyle(.secondary)
+            ScrollView {
+                TaskRows(state: state)
+            }
             Button(state.text("openTasks")) { state.screen = .tasks }.buttonStyle(.bordered)
             Spacer()
         }.padding(24).frame(maxHeight: .infinity)
