@@ -1,0 +1,164 @@
+<!doctype html><html lang="ru"><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Fowcus — ежедневник</title>
+<style>
+*{box-sizing:border-box}body{--paper:#fafafa;--surface:#fff;--ink:#131313;--line:#e5e5e5;--muted:#707070;--accent:#141414;--side:#f0f0f0;--dial:#eaeaea;--rim:#d6d6d6;background:var(--paper);color:var(--ink);margin:0;font:15px/1.5 Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}body.dark{--paper:#101010;--surface:#191919;--ink:#f5f5f5;--line:#303030;--muted:#a0a0a0;--accent:#f3f3f3;--side:#232323;--dial:#202020;--rim:#3a3a3a}button,input,select{font:inherit;color:inherit}button{background:none;border:0;cursor:pointer;padding:7px 10px;border-radius:4px}button:hover,button.sel{background:var(--line)}button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid var(--accent)}header{height:60px;border-bottom:1px solid var(--line);display:flex;align-items:center;padding:0 3vw;gap:14px}header strong{font-size:21px;letter-spacing:-1px}header span{margin-left:auto;color:var(--muted)}main{display:flex;min-height:calc(100vh - 60px)}nav{width:170px;background:var(--side);padding:48px 14px;flex-shrink:0}nav button{display:block;text-align:left;width:100%;margin-bottom:4px}article{flex:1;min-width:0;padding:48px clamp(24px,4vw,76px)}aside{width:clamp(245px,25vw,350px);border-left:1px solid var(--line);padding:48px 24px}h1{font-weight:550;letter-spacing:-.05em;font-size:clamp(36px,4vw,64px);line-height:1.1;margin:6px 0 32px}h2{font-size:19px;letter-spacing:-.03em}small,.muted{color:var(--muted)}.mono,time,output{font-family:"Space Mono",Menlo,Consolas,monospace;font-variant-numeric:tabular-nums}.hero{margin:clamp(48px,9vh,110px) 0 45px}.digits{display:block;font-size:clamp(64px,8vw,136px);letter-spacing:-.085em;line-height:1.15}.rule{height:3px;background:var(--line);margin:20px 0 10px}.rule i{display:block;height:100%;background:var(--accent)}.primary{background:var(--accent);color:var(--paper);padding:10px 22px}.primary:hover{background:var(--accent);opacity:.9}.row{padding:15px 0;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:9px}.row label{flex:1}.row small{display:block}input,select{background:var(--paper);border:1px solid var(--line);border-radius:3px;padding:6px;max-width:100%}input[type=checkbox],input[type=range]{accent-color:var(--accent)}.extra{opacity:0}.row:hover .extra,.row:focus-within .extra{opacity:1}.foot{border-top:1px solid var(--line);margin-top:48px;padding-top:14px}.tabs button{font-size:13px}.tabs .sel{background:transparent;border-bottom:2px solid var(--accent);border-radius:0}.metric{font-size:34px;color:var(--accent)}[hidden]{display:none!important}@media(max-width:900px){nav{width:124px}article,aside{padding:30px 16px}}@media(max-width:720px){main{flex-wrap:wrap}nav{width:100%;padding:6px}nav button{display:inline;width:auto}article,aside{width:100%;flex:auto}aside{border-top:1px solid var(--line)}.extra{opacity:1}header span{display:none}}@media(hover:none){.extra{opacity:1}}
+
+svg{display:block;width:20px;height:20px;flex:none}
+header{height:56px;padding:0 18px;gap:8px}header strong{font-size:17px}
+#theme{margin-left:auto}header button{width:36px;height:36px;display:grid;place-items:center;border-radius:10px;color:var(--muted)}
+header button[aria-expanded=true]{background:var(--side);color:var(--ink)}
+nav{padding:38px 12px;width:180px}nav button{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:11px;color:var(--muted);font-size:14px}
+nav button.sel,.sound[aria-pressed=true]{background:color-mix(in srgb,var(--accent) 11%,var(--paper));color:var(--accent)}
+.transport,.volume{display:flex;align-items:center;gap:12px}.transport button{border-radius:50%;display:grid;place-items:center;width:40px;height:40px;background:var(--side)}
+.transport .play{width:56px;height:56px;background:var(--ink);color:var(--paper)}.transport button:hover{filter:contrast(.85)}
+button:disabled{opacity:.35;cursor:default}.play svg{fill:currentColor;width:22px}
+.sounds{display:grid;grid-template-columns:repeat(auto-fit,minmax(135px,1fr));gap:10px;max-width:670px}
+.sound{display:grid;grid-template-columns:1fr auto;gap:20px;padding:16px;background:var(--side);border:1px solid transparent;border-radius:14px;text-align:left}
+.sound[aria-pressed=true]{border-color:var(--accent)}.sound span{grid-column:1/-1}.sound .mark{width:15px}
+.volume{max-width:310px;color:var(--muted);margin-top:28px}.volume output{font-size:12px;min-width:4ch}
+.volume input{appearance:none;-webkit-appearance:none;flex:1;min-width:0;height:32px;background:transparent;border:0;padding:0;cursor:pointer}
+.volume input::-webkit-slider-runnable-track{height:4px;border-radius:4px;background:linear-gradient(to right,var(--accent) var(--fill),var(--line) var(--fill))}
+.volume input::-webkit-slider-thumb{appearance:none;margin-top:-5px;background:var(--accent);width:14px;height:14px;border-radius:50%}
+.volume input::-moz-range-track{height:4px;background:var(--line)}.volume input::-moz-range-progress{background:var(--accent);height:4px}.volume input::-moz-range-thumb{background:var(--accent);border:0}
+.ambient{display:inline-flex;align-items:center;gap:8px;color:var(--muted)}.tabs{display:inline-flex;background:var(--side);padding:4px;border-radius:11px;flex-wrap:wrap}
+.tabs button,.tabs button.sel{border:0;border-radius:8px}.tabs button.sel{background:var(--paper);color:var(--accent)}
+@media(max-width:720px){nav{width:100%;display:flex;padding:6px;justify-content:space-around}nav button{width:auto;justify-content:center}nav button span{display:none}}
+</style><link rel="stylesheet" href="workspace.css">
+<header><div class="window-dots" aria-hidden="true"><i></i><i></i><i></i></div><button id="plan"></button></header>
+<main><nav id="nav" class="rail" aria-label="Навигация"></nav><article id="page"></article><aside id="aside"></aside></main>
+<dialog id="settings" aria-labelledby="settings-title">
+<div class="dialog-head"><h2 id="settings-title">Настройка помодоро</h2><button aria-label="Закрыть" onclick="settings.close()">×</button></div>
+<p class="muted">Выбери ритм работы. Звёздочка закрепляет его над таймером.</p>
+<div id="choices"></div>
+<form id="custom"><h3>Свой интервал</h3><div class="fields"><label>Фокус, мин<input required type="number" value="45" min="1" max="240" name="work"></label><label>Отдых, мин<input required type="number" value="10" min="1" max="120" name="rest"></label></div><button class="primary">Добавить и выбрать</button></form>
+</dialog><div id="picker" popover="auto" role="dialog"></div><script src="pickers.js"></script><script>
+const $=id=>document.getElementById(id), now=new Date(),today=new Date(now-now.getTimezoneOffset()*60000).toISOString().slice(0,10);
+let day=today,view='Фокус',mode=0,durations=[25,5,15],left=1500,end=0,sound='Тишина',audio,gain,volume=.18;
+const db=JSON.parse(localStorage.fowcusBook||'null')||{tasks:[{id:1,date:today,name:'Собрать первый прототип',n:2},{id:2,date:today,name:'Подготовить вопросы к встрече',n:1}],blocks:[],sessions:[]};
+let current=null, screens=['Фокус','Задачи','Календарь','Статистика','Звуки','Настройки'],modes=['Фокус','Короткий отдых','Длинный отдых'];
+const save=()=>localStorage.fowcusBook=JSON.stringify(db),esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])), dateLabel=d=>new Date(d+'T12:00').toLocaleDateString('ru',{day:'numeric',month:'long',weekday:'long'});
+const defaults=[[25,5],[50,10],[90,10]].map(([work,rest],i)=>({work,rest,pinned:i===0}));
+const prefs=JSON.parse(localStorage.getItem('fowcus.rhythms')||'null')||{items:defaults,active:0};
+const activePreset=()=>prefs.items[prefs.active];
+function useDurations(){const {work,rest}=activePreset();durations=[work,rest,15]}
+useDurations();left=durations[0]*60;
+const paths={
+  sliders:'M3 7h9m5 0h4M3 17h4m5 0h9 M14.5 4.5a2.5 2.5 0 100 5 2.5 2.5 0 000-5z M9.5 14.5a2.5 2.5 0 100 5 2.5 2.5 0 000-5z',
+  star:'M12 3l2.8 5.7 6.2.9-4.5 4.4 1.1 6.2-5.6-3-5.6 3 1.1-6.2L3 9.6l6.2-.9z',
+  menu:'M3 5h18v14H3z M9 5v14', plan:'M6 4.5h12a3 3 0 013 3v9a3 3 0 01-3 3H6a3 3 0 01-3-3v-9a3 3 0 013-3z M15.5 5v14',
+  theme:'M19.5 14A8 8 0 0110 4a8 8 0 109.5 10z',
+  focus:'M12 4a8 8 0 100 16 8 8 0 000-16z M12 8v4l3 2',
+  tasks:'M3 7l2 2 3-4 M11 7h9 M3 15l2 2 3-4 M11 15h9',
+  calendar:'M4 5h16v15H4z M4 10h16 M8 3v4 M16 3v4',
+  stats:'M5 19v-5 M11 19V9 M17 19V4', sounds:'M4 16v-4a8 8 0 0116 0v4 M4 13h3v6H4z M17 13h3v6h-3z',
+  play:'M8 5l11 7-11 7z', pause:'M7 5h3v14H7z M14 5h3v14h-3z',
+  reset:'M4 10a8 8 0 111 8 M4 4v6h6', check:'M4 12l5 5L20 6',
+  mute:'M3 10h4l5-4v12l-5-4H3z M16 9l5 6 M21 9l-5 6',
+  volume:'M3 10h4l5-4v12l-5-4H3z M16 9q3 3 0 6 M19 6q6 6 0 12',
+  noise:'M3 10v4 M7 7v10 M12 3v18 M17 8v8 M21 10v4',
+  rain:'M5 13a4 4 0 010-8 6 6 0 0111-1 4.5 4.5 0 011 9z M8 16l-1 3 M13 16l-1 3 M18 16l-1 3',
+  cafe:'M4 8h12v6a5 5 0 01-5 5H9a5 5 0 01-5-5z M16 9h2a3 3 0 010 6h-2 M3 21h15 M8 3v2 M12 3v2'
+};
+function icon(key,cls=''){return `<svg class="${cls}" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.65" stroke-linecap="round" stroke-linejoin="round"><path d="${paths[key]}"/></svg>`}
+function transport(){
+  const label=end?'Пауза':left===durations[mode]*60?'Начать':'Продолжить';
+  return `<div class="transport"><button class="play" title="${label}" aria-label="${label}" onclick="toggleTimer()">${icon(end?'pause':'play')}</button><button title="Сбросить таймер" aria-label="Сбросить таймер" onclick="resetTimer()" ${!end&&left===durations[mode]*60?'disabled':''}>${icon('reset')}</button></div>`;
+}
+const tracks={'Тишина':'mute','Белый шум':'noise','Дождь':'rain','Кафе':'cafe'};
+function soundControls(){
+  const choices=Object.entries(tracks).map(([name,key])=>`<button class="sound" aria-pressed="${sound===name}" onclick="playSound('${name}')">${icon(key)}${sound===name?icon('check','mark'):''}<span>${name}</span></button>`).join('');
+  return `<div class="sounds">${choices}</div><div class="volume">${icon('volume')}<input aria-label="Громкость" type="range" min="0" max="100" value="${Math.round(volume*100)}" style="--fill:${volume*100}%" oninput="setVolume(this)"><output id="level">${Math.round(volume*100)}%</output></div>`;
+}
+function setVolume(control){
+  volume=control.valueAsNumber/100;
+  control.style.setProperty('--fill',control.value+'%');
+  $('level').textContent=control.value+'%';
+  if(gain)gain.gain.value=volume*.3;
+}
+function go(v){view=v;render()}function taskList(){return db.tasks.filter(t=>t.date===day).map(t=>'<div class="row"><input aria-label="Готово: '+esc(t.name)+'" type="checkbox" '+(t.done?'checked':'')+' onchange="done('+t.id+',this.checked)"><label style="'+(t.done?'text-decoration:line-through':'')+'">'+esc(t.name)+'<small>'+t.n+' пом.</small></label><button class="extra" title="Выбрать для фокуса" aria-label="Выбрать для фокуса" onclick="choose('+t.id+')">↗</button></div>').join('')||'<p class="muted">На этот день задач пока нет.</p>'}
+function done(id,v){db.tasks.find(t=>t.id===id).done=v;save();render()}function choose(id){if(end&&mode===0){alert('Сначала приостанови текущую сессию.');return}if(current!==id&&mode===0&&left<durations[0]*60){if(!confirm('Начать новую сессию для выбранной задачи?')){render();return}left=durations[0]*60}current=id;go('Фокус')}
+function dateField(){return `<button class="field date-field" type="button" aria-label="Дата плана" aria-haspopup="dialog" onclick="calendarPicker(this)">${icon('calendar')}<span>${new Date(day+'T12:00').toLocaleDateString('ru',{day:'numeric',month:'short',year:'numeric'})}</span>${chevron}</button>`}
+function render(){ $('nav').innerHTML=screens.map((v,i)=>`<button class="${view===v?'sel':''}" aria-label="${v}" aria-current="${view===v?'page':'false'}" onclick="go('${v}')">${icon(['focus','tasks','calendar','stats','sounds','sliders'][i])}<span aria-hidden="true">${v}</span></button>`).join('');
+$('aside').innerHTML='<small>План дня</small><h2>'+dateLabel(day)+'</h2>'+dateField()+taskList()+'<button onclick="go(\'Задачи\');$(\'name\').focus()">＋ Добавить задачу</button>';
+let h='<small>'+dateLabel(view==='Фокус'?today:day)+'</small><h1>'+view+'</h1>';
+if(view==='Фокус'){
+  h+=`<div class="rhythms">${prefs.items.map((item,i)=>item.pinned?`<button aria-pressed="${i===prefs.active}" onclick="selectPreset(${i})">${item.work} / ${item.rest}</button>`:'').join('')}<button id="adjust" title="Настроить помодоро" aria-label="Настроить помодоро" onclick="openSettings()">${icon('sliders')}</button></div>
+  <section class="clockface"><div class="dial"><svg class="dial-track" viewBox="0 0 100 100" aria-hidden="true"><circle cx="50" cy="50" r="48"/><circle id="progress" cx="50" cy="50" r="48" pathLength="100"/></svg><small><i class="dot"></i>${mode?'Перерыв':'Фокус'} · ${durations[mode]} мин</small><output id="digits" class="digits"></output></div>${transport()}</section>
+  <div class="focus-context"><div><label for="binding">Текущая задача</label><select id="binding" ${end&&mode===0?'disabled':''} onchange="choose(Number(this.value)||null)"><option value="">Без задачи</option>${db.tasks.filter(t=>!t.done||t.id===current).map(t=>`<option value="${t.id}" ${current===t.id?'selected':''}>${esc(t.name)}</option>`).join('')}</select></div><button class="ambient" onclick="go('Звуки')">${icon(tracks[sound])}${sound}</button></div>`;
+}
+$('page').dataset.screen=view;
+if(view==='Задачи'){h+=dateField()+taskList()+'<form class="composer" onsubmit="addTask(event)"><input required maxlength="120" id="name" placeholder="Название задачи" aria-label="Название задачи"> <label class="estimate"><input required type="number" id="estimate" aria-label="Оценка в помодоро" value="1" min="1" max="32" > пом.</label> <button class="primary">＋ Добавить</button></form>'}
+if(view==='Календарь'){let tasks=db.tasks.filter(t=>t.date===day);h+=dateField()+'<h2>Расписание</h2>'+db.blocks.filter(b=>b.date===day).sort((a,b)=>a.start-b.start).map(b=>'<div class="row"><time>'+hm(b.start)+' – '+hm(b.finish)+'</time> '+esc(db.tasks.find(t=>t.id===b.id)?.name)+'</div>').join('')+(tasks.length?'<form class="foot" onsubmit="block(event)"><label>Задача <select id="bt">'+tasks.map(t=>'<option value="'+t.id+'">'+esc(t.name)+'</option>').join('')+'</select></label><p><label>Начало <input required type="time" id="start" value="10:00"></label> <label>Минут <input required id="length" type="number" min="1" max="720" value="'+durations[0]+'" style="width:65px"></label></p><button class="primary">Запланировать</button></form>':'<p>Добавь задачу на эту дату, чтобы выделить для неё время.</p><button onclick="go(\'Задачи\')">К задачам →</button>')}
+if(view==='Статистика')h+=dateField()+dailyReport();
+if(view==='Звуки')h+=soundControls();
+if(view==='Настройки')h+=`<div class="row"><span>Тема оформления</span><div class="theme-switch" role="group" aria-label="Тема оформления">${['light','dark'].map((v,i)=>`<button aria-pressed="${document.body.classList.contains('dark')===(v==='dark')}" onclick="setTheme('${v}');render();document.querySelector('.theme-switch [aria-pressed=true]').focus()">${i?'Тёмная':'Светлая'}</button>`).join('')}</div></div>`;
+$('page').innerHTML=h;styleChoices();paint()}
+function dailyReport(){
+  const planned=db.tasks.filter(task=>task.date===day);
+  const sessions=db.sessions.filter(session=>session.date===day);
+  const completed=planned.filter(task=>task.done).length;
+  const percent=planned.length?Math.round(completed/planned.length*100):0;
+  const totals=new Map();
+  let minutes=0;
+  for(const session of sessions){
+    const id=session.task??null;
+    totals.set(id,(totals.get(id)||0)+session.minutes);
+    minutes+=session.minutes;
+  }
+  function taskRow(task){
+    return `<li><span class="status-mark" aria-label="${task.done?'Выполнена':'Не выполнена'}">${task.done?'✓':'○'}</span><span>${esc(task.name)}</span><time>${totals.get(task.id)||0} мин</time></li>`;
+  }
+  const other=db.tasks.filter(task=>task.date!==day&&totals.has(task.id));
+  return `<section class="report"><div class="report-summary"><div><small>Время фокуса</small><strong>${minutes} мин</strong></div><div><small>Помодоро</small><strong>${sessions.length}</strong></div></div>
+    <h2>Задачи дня</h2>${planned.length?`<div class="completion"><span style="width:${percent}%"></span></div><p class="muted">Готово · ${completed} из ${planned.length} &nbsp; / &nbsp; Осталось · ${planned.length-completed}</p><ul>${planned.map(taskRow).join('')}</ul>`:'<p class="muted">На этот день задач нет.</p>'}
+    ${other.length?`<h2>Фокус по другим задачам</h2><ul>${other.map(taskRow).join('')}</ul>`:''}
+    ${totals.has(null)?`<ul><li><span>Без задачи</span><time>${totals.get(null)} мин</time></li></ul>`:''}</section>`;
+}
+function addTask(e){e.preventDefault();let name=$('name').value.trim();if(!name)return;db.tasks.push({name,id:Date.now(),date:day,n:+$('estimate').value});save();render()}
+function hm(n){return [Math.floor(n/60),n%60].map(v=>String(v).padStart(2,'0')).join(':')}
+function block(e){e.preventDefault();let [h,m]=$('start').value.split(':').map(Number),start=h*60+m,finish=start+(+$('length').value);if(finish>1440||db.blocks.some(b=>b.date===day&&start<b.finish&&finish>b.start)){alert('Выбери свободный интервал в пределах дня.');return}db.blocks.push({date:day,id:+$('bt').value,start,finish});save();render()}
+function storePresets(){localStorage.setItem('fowcus.rhythms',JSON.stringify(prefs))}
+function openSettings(){drawChoices();$('settings').showModal()}
+function drawChoices(){
+  $('choices').innerHTML=prefs.items.map((p,i)=>`<div class="choice"><button aria-pressed="${i===prefs.active}" onclick="selectPreset(${i})"><b>${p.work} / ${p.rest}</b>${i===prefs.active?icon('check'):''}</button><button aria-label="Закрепить ${p.work} / ${p.rest}" title="Закрепить над таймером" aria-pressed="${p.pinned}" onclick="pinPreset(${i})">${icon('star')}</button></div>`).join('');
+}
+function pinPreset(i){prefs.items[i].pinned=!prefs.items[i].pinned;storePresets();drawChoices();$('choices').children[i].lastElementChild.focus();render()}
+function selectPreset(i){
+  if(i!==prefs.active){
+    if((end||left!==durations[mode]*60)&&!confirm('Сбросить текущий интервал и сменить ритм?'))return false;
+    prefs.active=i;useDurations();mode=0;resetTimer();storePresets();
+  }
+  if($('settings').open)$('settings').close();
+  return true;
+}
+$('settings').onclose=()=>$('adjust')?.focus();
+$('custom').onsubmit=e=>{
+  e.preventDefault();
+  const form=e.currentTarget,work=Number(form.elements.work.value),rest=Number(form.elements.rest.value);
+  let i=prefs.items.findIndex(p=>p.work===work&&p.rest===rest);
+  const added=i<0;
+  if(added)i=prefs.items.push({work,rest,pinned:true})-1;
+  if(selectPreset(i)){prefs.items[i].pinned=true;storePresets();render();$('adjust').focus()}
+  else if(added)prefs.items.pop();
+};
+function resetTimer(){end=0;left=durations[mode]*60;render()}
+function toggleTimer(){if(end){left=Math.max(1,Math.ceil((end-Date.now())/1000));end=0}else end=Date.now()+left*1000;render()}
+function paint(){if(end){left=Math.max(0,Math.ceil((end-Date.now())/1000));if(!left){const finish=new Date(end);end=0;if(mode===0){db.sessions.push({date:new Date(finish-finish.getTimezoneOffset()*60000).toISOString().slice(0,10),minutes:durations[mode],task:current});save()}mode=mode===0?1:0;resetTimer();return}}if($('digits')){$('digits').textContent=hm(left);$('progress').style.strokeDashoffset=100*(1-left/(durations[mode]*60))}}
+async function playSound(v){if(audio){await audio.close();audio=null;gain=null}sound=v;if(v!=='Тишина'){audio=new AudioContext();let buf=audio.createBuffer(1,audio.sampleRate*4,audio.sampleRate),data=buf.getChannelData(0);for(let i=0;i<data.length;i++)data[i]=(Math.random()*2-1)*(v==='Дождь'?.7+.3*Math.sin(i/6000):1);let src=audio.createBufferSource(),filter=audio.createBiquadFilter();src.buffer=buf;src.loop=true;filter.type='lowpass';filter.frequency.value={'Белый шум':20000,'Дождь':3200,'Кафе':650}[v];gain=audio.createGain();gain.gain.value=volume*.3;src.connect(filter).connect(gain).connect(audio.destination);src.start()}render()}
+function setupPanel(key,target,name){
+  const button=$(key), panel=$(target);
+  function show(open){
+    if(target==='nav')panel.classList.toggle('rail',!open);else panel.hidden=!open;
+    button.setAttribute('aria-expanded',String(open));
+    button.title=button.ariaLabel=(open?'Скрыть ':'Показать ')+name;
+  }
+  button.innerHTML=icon(key);
+  button.setAttribute('aria-controls',target);
+  show(localStorage.getItem('fowcus.'+key)!=='closed');
+  button.onclick=()=>{const open=button.getAttribute('aria-expanded')!=='true';show(open);localStorage.setItem('fowcus.'+key,open?'open':'closed')};
+}
+
+setupPanel('plan','aside','план дня');
+function setTheme(value){document.body.classList.toggle('dark',value==='dark');localStorage.setItem('fowcus.theme',value)}
+document.body.classList.toggle('dark',localStorage.getItem('fowcus.theme')==='dark');
+render();setInterval(paint,250);
+</script></html>
