@@ -25,6 +25,7 @@ enum Theme: String, CaseIterable { case system, light, dark
 
 @MainActor
 final class AppState: ObservableObject {
+    let updates = UpdateController()
     @Published var screen: Screen = .focus
     @Published var timer = FocusTimer()
     @Published var showPlan: Bool { didSet { defaults.set(showPlan, forKey: "showPlan") } }

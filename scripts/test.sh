@@ -10,3 +10,5 @@ xcrun swiftc -module-cache-path "$PWD/.build/module-cache" \
     Focuselle/Models/SessionController.swift Focuselle/Storage/Database.swift \
     Focuselle/Storage/FocusStore.swift Tests/StorageTests.swift -lsqlite3 -o .build/StorageTests
 .build/StorageTests
+python3 Tests/UpdatePackagingTests.py
+bash scripts/test-update-signing.sh

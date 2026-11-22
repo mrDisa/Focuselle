@@ -12,13 +12,17 @@ struct FocuselleApp: App {
             WorkspaceView(state: state, showMini: { delegate.showMini(state: state) })
                 .preferredColorScheme(state.theme.scheme)
                 .environment(\.locale, state.locale)
+                .onAppear { state.updates.start() }
         }
         .defaultSize(width: 1000, height: 740)
-        .windowStyle(.titleBar)
+        .windowStyle(.hiddenTitleBar)
         .windowToolbarStyle(.unifiedCompact)
         .windowResizability(.contentMinSize)
         .commands {
             CommandGroup(replacing: .newItem) { }
+            CommandGroup(after: .appInfo) {
+                UpdateCheckButton(state: state, updates: state.updates)
+            }
             CommandGroup(after: .windowArrangement) {
                 Button(state.text("miniTimer")) { delegate.showMini(state: state) }
                     .keyboardShortcut("m", modifiers: [.command, .shift])
@@ -61,6 +65,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var dockIcons: [String: NSImage] = [:]
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApp.setActivationPolicy(.regular)
+        for window in NSApp.windows where !(window is NSPanel) {
+            window.titleVisibility = .hidden
+        }
         appearanceObservation = NSApp.observe(\.effectiveAppearance, options: [.initial, .new]) { [weak self] _, _ in
             Task { @MainActor in self?.updateDockIcon() }
         }

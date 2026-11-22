@@ -28,36 +28,34 @@ struct TaskRows: View {
                     .font(.system(size: 13)).foregroundStyle(.secondary).padding(.vertical, 18)
             }
             ForEach(state.dayTasks) { task in
-                HStack(alignment: .top, spacing: 8) {
+                HStack(alignment: .center, spacing: 10) {
                     Button { state.toggleTask(task) } label: {
                         Image(systemName: task.isCompleted ? "checkmark.circle.fill" : "circle")
-                            .font(.system(size: 17)).frame(width: 28, height: 32).contentShape(Rectangle())
+                            .font(.system(size: 17))
+                            .foregroundStyle(task.isCompleted ? Color.accentColor : Color.secondary)
+                            .frame(width: 28, height: 32).contentShape(Rectangle())
                     }.buttonStyle(.plain)
                         .accessibilityLabel(state.text(task.isCompleted ? "markIncomplete" : "markComplete"))
                         .disabled(!state.storageReady)
                     Button { state.editingTask = task } label: {
-                        VStack(alignment: .leading, spacing: 6) {
+                        VStack(alignment: .leading, spacing: 5) {
                             Text(task.title).strikethrough(task.isCompleted).font(.system(size: 13, weight: .medium))
                                 .foregroundStyle(task.isCompleted ? .secondary : .primary)
+                                .fixedSize(horizontal: false, vertical: true)
                             if !task.details.isEmpty {
                                 Text(task.details).font(.system(size: 11)).foregroundStyle(.secondary).lineLimit(2)
                             }
                         }.frame(maxWidth: .infinity, minHeight: 32, alignment: .leading).contentShape(Rectangle())
                     }.buttonStyle(.plain).help(state.text("editTask"))
-                    Button { state.chooseTask(task) } label: {
-                        Image(systemName: "play.circle").frame(width: 28, height: 32).contentShape(Rectangle())
-                    }.buttonStyle(.plain).help(state.text("focusOnTask"))
-                        .accessibilityLabel(state.text("focusOnTask"))
-                        .disabled(task.isCompleted || state.timer.isRunning || state.hasProgress || !state.storageReady)
-                    Menu {
-                        Button(state.text("editTask")) { state.editingTask = task }
-                        Button(state.text("deleteTask"), role: .destructive) { pendingDeletion = task }
-                    } label: { Image(systemName: "ellipsis").frame(width: 24, height: 32) }
-                        .menuStyle(.borderlessButton).fixedSize().help(state.text("taskActions"))
                 }
-                .padding(10).background(Color.primary.opacity(0.025), in: RoundedRectangle(cornerRadius: 12))
+                .padding(.horizontal, 12).padding(.vertical, 10)
+                .background(Color.primary.opacity(0.025), in: RoundedRectangle(cornerRadius: 12))
+                .contentShape(RoundedRectangle(cornerRadius: 12))
                 .contextMenu {
+                    Button(state.text("focusOnTask")) { state.chooseTask(task) }
+                        .disabled(task.isCompleted || state.timer.isRunning || state.hasProgress || !state.storageReady)
                     Button(state.text("editTask")) { state.editingTask = task }
+                    Divider()
                     Button(state.text("deleteTask"), role: .destructive) { pendingDeletion = task }
                 }
             }
@@ -230,7 +228,7 @@ struct PlannerCalendarView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 22) {
-            MonthCalendarView(state: state)
+            PlannerDatePicker(state: state)
             HStack(spacing: 12) {
                 metric("checklist", title: "tasks", value: "\(state.dayTasks.count)")
                 metric("checkmark.circle", title: "completedTasks", value: "\(state.dayTasks.filter(\.isCompleted).count)")
@@ -266,7 +264,9 @@ struct PlannerCalendarView: View {
     private func metric(_ icon: String, title: String, value: String) -> some View {
         VStack(alignment: .leading, spacing: 12) {
             Label(state.text(title), systemImage: icon).font(.system(size: 11)).foregroundStyle(.secondary)
+                .lineLimit(2).frame(height: 28, alignment: .topLeading)
             Text(value).font(.system(size: 20, weight: .medium, design: .rounded)).monospacedDigit()
+                .lineLimit(1).minimumScaleFactor(0.7)
         }.frame(maxWidth: .infinity, alignment: .leading).padding(16)
             .background(palette.surface, in: RoundedRectangle(cornerRadius: 14))
             .overlay(RoundedRectangle(cornerRadius: 14).strokeBorder(palette.border))

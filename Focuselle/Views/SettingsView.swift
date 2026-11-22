@@ -25,6 +25,10 @@ struct SettingsView: View {
                     Button(state.text("previewBreakSound")) { state.previewTransitionSound(for: .shortBreak) }
                 }
             }
+            Section(state.text("updates")) {
+                UpdateCheckButton(state: state, updates: state.updates)
+                Text(state.text("updatesDetail")).font(.caption).foregroundStyle(.secondary)
+            }
             Section(state.text("controls")) {
                 LabeledContent(state.text("navigation"), value: "⌘1 – ⌘5")
                 LabeledContent(state.text("miniTimer"), value: "⇧⌘M")
@@ -36,5 +40,15 @@ struct SettingsView: View {
                 Text(state.text("prototypeNotice")).foregroundStyle(.secondary)
             }
         }.formStyle(.grouped)
+    }
+}
+
+struct UpdateCheckButton: View {
+    @ObservedObject var state: AppState
+    @ObservedObject var updates: UpdateController
+
+    var body: some View {
+        Button(state.text("checkForUpdates")) { updates.checkForUpdates() }
+            .disabled(!updates.canCheckForUpdates && updates.availableVersion == nil)
     }
 }

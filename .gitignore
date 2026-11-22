@@ -12,3 +12,9 @@ xcuserdata/
 # Keep the reviewed early-access installer available with the landing source.
 !/landing/dist/downloads/Focuselle-0.2.0-arm64.dmg
 !/landing/dist/downloads/Focuselle-0.2.0-arm64.dmg.sha256
+
+# Private update signing seeds must never be committed.
+.secrets/
+
+__pycache__/
+*.pyc
