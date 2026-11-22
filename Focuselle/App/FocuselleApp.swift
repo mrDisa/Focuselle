@@ -13,8 +13,9 @@ struct FocuselleApp: App {
                 .preferredColorScheme(state.theme.scheme)
                 .environment(\.locale, state.locale)
         }
-        .defaultSize(width: 1140, height: 760)
+        .defaultSize(width: 1140, height: 860)
         .windowStyle(.titleBar)
+        .windowResizability(.contentMinSize)
         .commands {
             CommandGroup(replacing: .newItem) { }
             CommandGroup(after: .windowArrangement) {
@@ -23,7 +24,7 @@ struct FocuselleApp: App {
             }
             CommandMenu(state.text("navigation")) {
                 ForEach(Array(Screen.allCases.enumerated()), id: \.element.id) { index, screen in
-                    Button(state.text(screen.rawValue)) { state.screen = screen }
+                    Button(state.text(screen.titleKey)) { state.screen = screen }
                         .keyboardShortcut(KeyEquivalent(Character(String(index + 1))), modifiers: .command)
                 }
                 Divider()
@@ -73,7 +74,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
     func showMini(state: AppState) {
         if miniPanel == nil {
-            let panel = NSPanel(contentRect: NSRect(x: 0, y: 0, width: 290, height: 215),
+            let panel = NSPanel(contentRect: NSRect(x: 0, y: 0, width: 290, height: 235),
                                 styleMask: [.titled, .closable, .utilityWindow, .nonactivatingPanel],
                                 backing: .buffered, defer: false)
             panel.title = "Focuselle · " + state.text("miniTimer")

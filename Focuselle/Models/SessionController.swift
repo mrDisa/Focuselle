@@ -20,12 +20,20 @@ final class SessionController {
         }
     }
 
-    func toggle(now: TimeInterval, date: Date, timeZone: TimeZone = .current) throws {
+    func toggle(now: TimeInterval, date: Date, timeZone: TimeZone = .current, autoAdvance: Bool = false) throws {
+        if timer.remaining == 0 && autoAdvance {
+            _ = try refresh(now: now, date: date, forceSave: true, autoAdvance: true)
+            return
+        }
         guard timer.remaining > 0 else { return }
         var next = timer
         var snapshot = active
         // Refresh before pausing so crossing the deadline still records completion.
         let completed = next.refresh(now: now)
+        if completed && autoAdvance {
+            try advance(from: snapshot, now: now, date: date, timeZone: timeZone)
+            return
+        }
         if !completed { next.toggle(now: now) }
         if snapshot.startedAt == nil {
             snapshot.startedAt = date
@@ -41,11 +49,15 @@ final class SessionController {
     }
 
     @discardableResult
-    func refresh(now: TimeInterval, date: Date, forceSave: Bool = false) throws -> Bool {
+    func refresh(now: TimeInterval, date: Date, forceSave: Bool = false, autoAdvance: Bool = false) throws -> Bool {
         var next = timer
         let completed = next.refresh(now: now)
         var snapshot = active
         snapshot.remaining = next.remaining
+        if autoAdvance && snapshot.remaining == 0 && snapshot.startedAt != nil {
+            try advance(from: snapshot, now: now, date: date, timeZone: .current)
+            return true
+        }
         if completed || forceSave || (next.isRunning && now - lastCheckpoint >= 5) {
             try store.checkpoint(snapshot, session: snapshot.remaining == 0 ? session(snapshot, endedAt: date, completed: true) : nil)
             lastCheckpoint = now
@@ -53,6 +65,26 @@ final class SessionController {
         timer = next
         active = snapshot
         return completed
+    }
+
+    /// Save the completed focus and the next interval together. Delayed ticks start
+    /// one full interval now; they never invent work during the delay.
+    private func advance(from previous: ActiveInterval, now: TimeInterval, date: Date, timeZone: TimeZone) throws {
+        var finished = previous
+        finished.remaining = 0
+        let phase: FocusTimer.Phase = previous.phase == .focus ? .shortBreak : .focus
+        var replacement = Self.idle(phase: phase, work: previous.workMinutes, rest: previous.restMinutes,
+                                    taskID: previous.taskID, taskTitle: previous.taskTitle)
+        replacement.startedAt = date
+        replacement.localDay = LocalDay.string(date, timeZone: timeZone)
+        replacement.timeZoneID = timeZone.identifier
+        var next = FocusTimer(phase: phase, duration: replacement.duration, remaining: replacement.remaining)
+        next.toggle(now: now)
+        try store.checkpoint(replacement, session: session(finished, endedAt: date, completed: true))
+        active = replacement
+        timer = next
+        lastCheckpoint = now
+        wasRestored = false
     }
 
     func pause(now: TimeInterval, date: Date) throws {

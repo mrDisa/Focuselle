@@ -12,11 +12,11 @@ final class FocusStore {
 
     func saveTask(_ task: FocusTask) throws {
         try database.execute("""
-            INSERT INTO tasks VALUES (?, ?, ?, ?, ?, ?, ?)
+            INSERT INTO tasks (id, title, planned_day, estimate, completed, completed_at, sort_order, details) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
             ON CONFLICT(id) DO UPDATE SET title=excluded.title, planned_day=excluded.planned_day,
-            estimate=excluded.estimate, completed=excluded.completed, completed_at=excluded.completed_at, sort_order=excluded.sort_order
+            estimate=excluded.estimate, completed=excluded.completed, completed_at=excluded.completed_at, sort_order=excluded.sort_order, details=excluded.details
             """, [.text(task.id), .text(task.title), .text(task.plannedDay), .number(Double(task.estimate)),
-                  .number(task.isCompleted ? 1 : 0), .date(task.completedAt), .number(Double(task.sortOrder))])
+                  .number(task.isCompleted ? 1 : 0), .date(task.completedAt), .number(Double(task.sortOrder)), .text(task.details)])
     }
 
     func tasks(day: String? = nil) throws -> [FocusTask] {
@@ -26,7 +26,7 @@ final class FocusStore {
             FocusTask(id: try row.string("id"), title: try row.string("title"), plannedDay: try row.string("planned_day"),
                       estimate: Int(try row.double("estimate")), isCompleted: try row.double("completed") == 1,
                       completedAt: row["completed_at"]?.number.map(Date.init(timeIntervalSince1970:)),
-                      sortOrder: Int(try row.double("sort_order")))
+                      sortOrder: Int(try row.double("sort_order")), details: try row.string("details"))
         }
     }
 

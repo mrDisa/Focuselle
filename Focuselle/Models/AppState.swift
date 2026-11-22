@@ -2,13 +2,14 @@ import AppKit
 import SwiftUI
 
 enum Screen: String, CaseIterable, Identifiable {
-    case focus, tasks, calendar, statistics, sounds, settings
+    case focus, tasks, statistics, sounds, settings
     var id: String { rawValue }
+    var titleKey: String { self == .tasks ? "planner" : rawValue }
+    var shortcutNumber: Int { (Self.allCases.firstIndex(of: self) ?? 0) + 1 }
     var symbol: String {
         switch self {
         case .focus: "timer"
-        case .tasks: "checklist"
-        case .calendar: "calendar"
+        case .tasks: "calendar"
         case .statistics: "chart.bar"
         case .sounds: "headphones"
         case .settings: "slider.horizontal.3"
@@ -29,10 +30,14 @@ final class AppState: ObservableObject {
     @Published var showPlan: Bool { didSet { defaults.set(showPlan, forKey: "showPlan") } }
     @Published var theme: Theme { didSet { defaults.set(theme.rawValue, forKey: "theme") } }
     @Published var language: String { didSet { defaults.set(language, forKey: "language") } }
+    @Published var soundEnabled: Bool { didSet { defaults.set(soundEnabled, forKey: "soundEnabled") } }
+    @Published var autoAdvance: Bool { didSet { defaults.set(autoAdvance, forKey: "autoAdvance") } }
     @Published var workMinutes = 25
     @Published var restMinutes = 5
     @Published var selectedDate = Date()
     @Published var taskDraft = ""
+    @Published var editingTask: FocusTask?
+    @Published private(set) var commandHeld = false
     @Published private(set) var tasks: [FocusTask] = []
     @Published private(set) var sessions: [FocusSession] = []
     @Published private(set) var presets: [TimerPreset] = []
@@ -45,12 +50,25 @@ final class AppState: ObservableObject {
     private var ticker: Timer?
     private var sleepObserver: NSObjectProtocol?
     private var terminationObserver: NSObjectProtocol?
+    private var modifierMonitor: Any?
+    private var resignObserver: NSObjectProtocol?
+    private var transitionSound: NSSound?
 
     init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
+        soundEnabled = defaults.object(forKey: "soundEnabled") as? Bool ?? true
+        autoAdvance = defaults.object(forKey: "autoAdvance") as? Bool ?? true
         theme = Theme(rawValue: defaults.string(forKey: "theme") ?? "system") ?? .system
         language = defaults.string(forKey: "language") ?? (Locale.preferredLanguages.first?.hasPrefix("ru") == true ? "ru" : "en")
         showPlan = defaults.object(forKey: "showPlan") as? Bool ?? true
+        modifierMonitor = NSEvent.addLocalMonitorForEvents(matching: .flagsChanged) { [weak self] event in
+            MainActor.assumeIsolated { self?.commandHeld = event.modifierFlags.contains(.command) }
+            return event
+        }
+        resignObserver = NotificationCenter.default.addObserver(forName: NSApplication.didResignActiveNotification,
+                                                               object: nil, queue: .main) { [weak self] _ in
+            MainActor.assumeIsolated { self?.commandHeld = false }
+        }
         openStorage()
         ticker = Timer(timeInterval: 0.25, repeats: true) { [weak self] _ in
             Task { @MainActor in self?.tick() }
@@ -92,8 +110,12 @@ final class AppState: ObservableObject {
     func toggleTimer() {
         guard storageReady else { return }
         perform {
-            try controller?.toggle(now: ProcessInfo.processInfo.systemUptime, date: Date())
-            if controller?.timer.remaining == 0 { try reload() }
+            let previousPhase = controller?.timer.phase
+            try controller?.toggle(now: ProcessInfo.processInfo.systemUptime, date: Date(), autoAdvance: autoAdvance)
+            if previousPhase != controller?.timer.phase || controller?.timer.remaining == 0 {
+                playTransitionSound()
+                try reload()
+            }
         }
     }
     func resetTimer() {
@@ -111,11 +133,23 @@ final class AppState: ObservableObject {
     private func tick() {
         guard timer.isRunning, storageReady else { return }
         perform {
-            if try controller?.refresh(now: ProcessInfo.processInfo.systemUptime, date: Date()) == true {
+            if try controller?.refresh(now: ProcessInfo.processInfo.systemUptime, date: Date(), autoAdvance: autoAdvance) == true {
+                playTransitionSound()
                 try reload()
-                NSSound.beep()
             }
         }
+    }
+
+    func previewTransitionSound(for phase: FocusTimer.Phase) {
+        transitionSound?.stop()
+        transitionSound = NSSound(named: NSSound.Name(phase == .focus ? "Glass" : "Ping"))
+        if let transitionSound { transitionSound.play() } else { NSSound.beep() }
+    }
+
+    private func playTransitionSound() {
+        guard soundEnabled, let phase = controller?.timer.phase else { return }
+        let destination: FocusTimer.Phase = autoAdvance ? phase : (phase == .focus ? .shortBreak : .focus)
+        previewTransitionSound(for: destination)
     }
 
     func addTask(title: String) {
@@ -125,6 +159,25 @@ final class AppState: ObservableObject {
             try store?.saveTask(FocusTask(title: cleaned, plannedDay: selectedDay, sortOrder: tasks.count))
             try reload()
         }
+    }
+
+    @discardableResult
+    func saveTask(_ task: FocusTask) -> Bool {
+        guard storageReady else { return false }
+        var updated = task
+        updated.title = updated.title.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !updated.title.isEmpty else { return false }
+        perform { try store?.saveTask(updated); try reload() }
+        return storageError == nil
+    }
+
+    func deleteTask(_ task: FocusTask) {
+        guard storageReady else { return }
+        perform { try store?.deleteTask(id: task.id); try reload() }
+    }
+
+    func newTask() {
+        editingTask = FocusTask(title: "", plannedDay: selectedDay, sortOrder: tasks.count)
     }
 
     func toggleTask(_ task: FocusTask) {
@@ -146,7 +199,9 @@ final class AppState: ObservableObject {
     func retryStorage() {
         if controller == nil { openStorage(); return }
         perform {
-            _ = try controller?.refresh(now: ProcessInfo.processInfo.systemUptime, date: Date(), forceSave: true)
+            if try controller?.refresh(now: ProcessInfo.processInfo.systemUptime, date: Date(), forceSave: true, autoAdvance: autoAdvance) == true {
+                playTransitionSound()
+            }
             try reload()
         }
     }
@@ -178,7 +233,7 @@ final class AppState: ObservableObject {
         workMinutes = controller.active.workMinutes
         restMinutes = controller.active.restMinutes
         restoredSession = controller.wasRestored
-        currentTaskTitle = controller.active.taskTitle
+        currentTaskTitle = tasks.first { $0.id == controller.active.taskID }?.title ?? controller.active.taskTitle
     }
 
     private func perform(_ operation: () throws -> Void) {

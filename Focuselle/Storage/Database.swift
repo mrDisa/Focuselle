@@ -103,7 +103,7 @@ final class Database {
 
     private func migrate() throws {
         let version = Int(try rows("PRAGMA user_version").first?["user_version"]?.number ?? 0)
-        guard version <= 2 else { throw DatabaseError.newerSchema }
+        guard version <= 3 else { throw DatabaseError.newerSchema }
         if version < 1 {
             try transaction {
                 try execute("""
@@ -157,6 +157,13 @@ final class Database {
                 try execute("PRAGMA user_version = 2")
             }
         }
+        if version < 3 {
+            try transaction {
+                try execute("ALTER TABLE tasks ADD COLUMN details TEXT NOT NULL DEFAULT ''")
+                try execute("PRAGMA user_version = 3")
+            }
+        }
+
     }
 }
 

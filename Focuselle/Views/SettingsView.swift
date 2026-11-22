@@ -16,8 +16,17 @@ struct SettingsView: View {
                 }
                 Toggle(state.text("dayPlan"), isOn: $state.showPlan)
             }
+            Section(state.text("timerSettings")) {
+                Toggle(state.text("autoAdvance"), isOn: $state.autoAdvance)
+                Text(state.text("autoAdvanceDetail")).font(.caption).foregroundStyle(.secondary)
+                Toggle(state.text("transitionSounds"), isOn: $state.soundEnabled)
+                HStack {
+                    Button(state.text("previewWorkSound")) { state.previewTransitionSound(for: .focus) }
+                    Button(state.text("previewBreakSound")) { state.previewTransitionSound(for: .shortBreak) }
+                }
+            }
             Section(state.text("controls")) {
-                LabeledContent(state.text("navigation"), value: "⌘1 – ⌘6")
+                LabeledContent(state.text("navigation"), value: "⌘1 – ⌘5")
                 LabeledContent(state.text("miniTimer"), value: "⇧⌘M")
                 LabeledContent(state.text("togglePlan"), value: "⇧⌘P")
                 LabeledContent(state.text("startPause"), value: "⇧⌘S")

@@ -1,161 +1,301 @@
 import SwiftUI
 
+// Disambiguate the property wrapper from the new SDK macro for CLT builds.
+private typealias ViewState<Value> = SwiftUI.State<Value>
+
 struct WorkspaceView: View {
     @ObservedObject var state: AppState
     var showMini: () -> Void
+    @Environment(\.colorScheme) private var scheme
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @ViewState<Bool> private var showCustom = false
+    @ViewState<Int> private var customWork = 40
+    @ViewState<Int> private var customRest = 8
+    private var palette: FocusPalette { FocusPalette(phase: state.timer.phase, dark: scheme == .dark) }
+    private var locked: Bool { state.timer.isRunning || state.hasProgress || !state.storageReady }
 
     var body: some View {
-        HStack(spacing: 0) {
-            navigation
-            Divider()
-            ScrollView {
-                VStack(alignment: .leading, spacing: 26) {
-                    Text(Date.now.formatted(.dateTime.locale(state.locale).weekday(.wide).day().month(.wide)))
-                        .font(.callout).foregroundStyle(.secondary)
-                    Text(state.text(state.screen.rawValue))
-                        .font(.system(size: 44, weight: .medium)).tracking(-2)
-                    StorageStatusView(state: state)
-                    content
+        GeometryReader { geometry in
+            let minimal = geometry.size.width < 650 || geometry.size.height < 540
+            HStack(spacing: 0) {
+                if minimal {
+                    minimalFocus(size: geometry.size)
+                } else {
+                    navigation
+                    Rectangle().fill(palette.border).frame(width: 1)
+                    VStack(spacing: 0) {
+                        ScrollView {
+                            VStack(alignment: .leading, spacing: 24) {
+                                header
+                                StorageStatusView(state: state)
+                                content(compact: geometry.size.height < 780)
+                            }
+                            .padding(.horizontal, 28).padding(.vertical, 24)
+                            .frame(maxWidth: 880).frame(maxWidth: .infinity)
+                        }.id(state.screen)
+                        footer
+                    }
+                    if state.showPlan && geometry.size.width >= 1000 {
+                        Rectangle().fill(palette.border).frame(width: 1)
+                        dayPlan.frame(width: 260)
+                    }
                 }
-                .padding(40)
-                .frame(maxWidth: 780, alignment: .leading)
-                .frame(maxWidth: .infinity)
             }
-            if state.showPlan {
-                Divider()
-                dayPlan.frame(width: 265)
+            .background(palette.background.ignoresSafeArea())
+            .toolbar {
+                ToolbarItemGroup(placement: .primaryAction) {
+                    if minimal {
+                        Button {
+                            NSApp.keyWindow?.setContentSize(NSSize(width: 1000, height: 800))
+                        } label: { Image(systemName: "arrow.up.left.and.arrow.down.right") }
+                        .help(state.text("expandWorkspace"))
+                    } else {
+                        Button(action: showMini) { Image(systemName: "pip") }
+                            .help(state.text("miniTimer"))
+                        Button { state.showPlan.toggle() } label: { Image(systemName: "sidebar.right") }
+                            .help(state.text("togglePlan"))
+                    }
+                }
             }
         }
-        .background(Color(nsColor: .windowBackgroundColor))
-        .frame(minWidth: state.showPlan ? 1000 : 735, minHeight: 650)
-        .toolbar {
-            ToolbarItem(placement: .principal) {
-                Text("Focuselle").font(.system(size: 16, weight: .semibold)).tracking(-0.7)
+        .sheet(item: $state.editingTask) { task in TaskEditorView(state: state, task: task) }
+        .tint(palette.accent)
+        .frame(minWidth: 340, minHeight: 400)
+        .onChange(of: state.screen) { _, screen in
+            if screen != .focus,
+               let window = NSApp.windows.first(where: { $0.identifier?.rawValue == "main" }),
+               window.contentLayoutRect.width < 650 || window.contentLayoutRect.height < 540 {
+                window.setContentSize(NSSize(width: 1000, height: 800))
             }
-            ToolbarItemGroup(placement: .primaryAction) {
-                Button(action: showMini) { Image(systemName: "pip") }
-                    .help(state.text("miniTimer"))
-                Button { state.showPlan.toggle() } label: { Image(systemName: "sidebar.right") }
-                    .help(state.text("togglePlan"))
+        }
+        .animation(reduceMotion ? nil : .easeInOut(duration: 0.45), value: state.timer.phase)
+        .toolbarBackground(.ultraThinMaterial, for: .windowToolbar)
+    }
+
+    private func minimalFocus(size: CGSize) -> some View {
+        let diameter = max(180, min(326, size.width - 40, size.height - 170))
+        return VStack(spacing: 14) {
+            Spacer(minLength: 0)
+            taskSelector
+            FocusDial(state: state)
+                .scaleEffect(diameter / 326).frame(width: diameter, height: diameter)
+            TimerTransport(state: state)
+            if state.storageError != nil {
+                StorageStatusView(state: state)
+            }
+            Spacer(minLength: 0)
+        }
+        .padding(20).frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+
+    private var footer: some View {
+        HStack {
+            Label(state.text("localOnly"), systemImage: "internaldrive")
+            Spacer()
+            Button { state.soundEnabled.toggle() } label: {
+                Label(state.text(state.soundEnabled ? "transitionSounds" : "silence"),
+                      systemImage: state.soundEnabled ? "speaker.wave.2" : "speaker.slash")
+            }.buttonStyle(.plain).help(state.text("transitionSounds"))
+        }
+        .font(.system(size: 11)).foregroundStyle(.secondary)
+        .padding(.horizontal, 24).padding(.vertical, 14)
+        .background(palette.background)
+        .overlay(alignment: .top) { Rectangle().fill(palette.border).frame(height: 1) }
+    }
+
+    private var header: some View {
+        HStack(alignment: .center) {
+            VStack(alignment: .leading, spacing: 8) {
+                Text(Date.now.formatted(.dateTime.locale(state.locale).weekday(.wide).day().month(.wide)))
+                    .font(.system(size: 12, weight: .medium)).foregroundStyle(.secondary)
+                Text(state.text(state.screen.titleKey))
+                    .font(.system(size: 34, weight: .semibold, design: .rounded)).tracking(-1)
+            }
+            Spacer()
+            if state.screen == .focus {
+                Label(state.text(state.timer.isRunning ? "sessionActive" : "readyToFocus"),
+                      systemImage: state.timer.isRunning ? "waveform" : "sparkle")
+                    .font(.system(size: 11, weight: .medium)).foregroundStyle(palette.accent)
+                    .padding(.horizontal, 12).padding(.vertical, 8)
+                    .background(palette.accent.opacity(0.09), in: Capsule())
             }
         }
     }
 
     private var navigation: some View {
-        VStack(spacing: 10) {
+        VStack(spacing: 4) {
+            Image(systemName: "sun.max.fill").font(.system(size: 20, weight: .medium))
+                .foregroundStyle(palette.accent).frame(height: 56).accessibilityHidden(true)
             ForEach(Screen.allCases.filter { $0 != .settings }) { item in navButton(item) }
-            Spacer()
+            Spacer(minLength: 16)
             navButton(.settings)
         }
-        .padding(.vertical, 26).padding(.horizontal, 12).frame(width: 68)
-        .background(Color(nsColor: .controlBackgroundColor))
+        .padding(.vertical, 12).frame(width: 76).frame(maxHeight: .infinity)
+        .background(.ultraThinMaterial)
     }
 
     private func navButton(_ item: Screen) -> some View {
         Button { state.screen = item } label: {
-            Image(systemName: item.symbol).font(.system(size: 19, weight: .regular))
-                .frame(width: 42, height: 42)
-                .background(state.screen == item ? Color.primary.opacity(0.09) : .clear,
-                            in: RoundedRectangle(cornerRadius: 11))
+            ZStack {
+                RoundedRectangle(cornerRadius: 14)
+                    .fill(state.screen == item ? palette.accent.opacity(0.12) : .clear)
+                    .overlay(RoundedRectangle(cornerRadius: 14).strokeBorder(state.screen == item ? palette.accent.opacity(0.18) : .clear))
+                    .frame(width: 46, height: 44)
+                Image(systemName: item.symbol).font(.system(size: 19, weight: .medium))
+                    .foregroundStyle(state.screen == item ? palette.accent : Color.secondary)
+                if state.screen == item {
+                    Capsule().fill(palette.accent).frame(width: 3, height: 18).frame(maxWidth: .infinity, alignment: .leading)
+                }
+            }
+            .frame(width: 76, height: 60)
+            .overlay(alignment: .bottom) {
+                if state.commandHeld {
+                    Text("⌘\(item.shortcutNumber)").font(.system(size: 10, weight: .semibold, design: .monospaced))
+                        .foregroundStyle(palette.accent).padding(.bottom, 1)
+                }
+            }
+            .contentShape(Rectangle())
         }
-        .buttonStyle(.plain).help(state.text(item.rawValue))
-        .accessibilityLabel(state.text(item.rawValue))
+        .buttonStyle(FocusPressStyle())
+        .help(state.text(item.titleKey) + " · ⌘\(item.shortcutNumber)")
+        .accessibilityLabel(state.text(item.titleKey))
         .accessibilityAddTraits(state.screen == item ? .isSelected : [])
     }
 
-    @ViewBuilder private var content: some View {
+    @ViewBuilder private func content(compact: Bool) -> some View {
         switch state.screen {
-        case .focus: focus
+        case .focus: focus(compact: compact)
         case .settings: SettingsView(state: state)
-        case .calendar:
-            DatePicker(state.text("planDate"), selection: $state.selectedDate, displayedComponents: .date)
-                .datePickerStyle(.graphical)
-            StageNotice(state: state, icon: "calendar", title: "calendarNext", detail: "calendarDetail")
-        case .tasks:
-            TasksView(state: state)
-        case .statistics:
-            SessionHistoryView(state: state)
-        case .sounds:
-            StageNotice(state: state, icon: "headphones", title: "soundsNext", detail: "soundsDetail")
+                case .tasks: PlannerCalendarView(state: state)
+        case .statistics: StatisticsView(state: state)
+        case .sounds: StageNotice(state: state, icon: "headphones", title: "soundsNext", detail: "soundsDetail")
         }
     }
 
-    private var focus: some View {
-        VStack(spacing: 28) {
-            HStack(spacing: 8) {
+    private func focus(compact: Bool) -> some View {
+        VStack(spacing: compact ? 12 : 16) {
+            HStack(spacing: 6) {
                 ForEach(state.presets.filter(\.isPinned)) { preset in
-                    Button("\(preset.focusMinutes) / \(preset.shortBreakMinutes)") {
+                    presetButton("\(preset.focusMinutes) / \(preset.shortBreakMinutes)",
+                                 selected: state.workMinutes == preset.focusMinutes && state.restMinutes == preset.shortBreakMinutes) {
                         state.selectPreset(work: preset.focusMinutes, rest: preset.shortBreakMinutes)
                     }
-                    .buttonStyle(.bordered)
-                    .tint(state.workMinutes == preset.focusMinutes ? .primary : .secondary)
-                    .disabled(state.timer.isRunning || state.hasProgress || !state.storageReady)
                 }
-                Spacer()
+                presetButton(state.text("customPreset"), selected: !state.presets.contains { $0.focusMinutes == state.workMinutes && $0.shortBreakMinutes == state.restMinutes }) {
+                    customWork = state.workMinutes
+                    customRest = state.restMinutes
+                    showCustom = true
+                }
+                .popover(isPresented: $showCustom) {
+                    VStack(alignment: .leading, spacing: 18) {
+                        Text(state.text("customPreset")).font(.headline)
+                        Stepper(value: $customWork, in: 1...240) {
+                            Text("\(state.text("focus")): \(customWork) \(state.text("minutes"))")
+                        }
+                        Stepper(value: $customRest, in: 1...120) {
+                            Text("\(state.text("shortBreak")): \(customRest) \(state.text("minutes"))")
+                        }
+                        Button(state.text("applyPreset")) {
+                            state.selectPreset(work: customWork, rest: customRest)
+                            showCustom = false
+                        }.buttonStyle(.borderedProminent).disabled(locked)
+                    }.padding(24).frame(width: 300)
+                }
             }
-            HStack {
+            .fixedSize(horizontal: true, vertical: false)
+            .padding(6).background(palette.surface, in: RoundedRectangle(cornerRadius: 14))
+            .overlay(RoundedRectangle(cornerRadius: 14).strokeBorder(palette.border))
+
+            HStack(spacing: 4) {
                 phaseButton("focus", phase: .focus)
                 phaseButton("shortBreak", phase: .shortBreak)
                 phaseButton("longBreak", phase: .longBreak)
             }
-            ZStack {
-                Circle().fill(Color.primary.opacity(0.045))
-                Circle().stroke(Color.primary.opacity(0.12), lineWidth: 1)
-                Circle().trim(from: 0, to: state.progress)
-                    .stroke(Color.primary.opacity(0.7), style: StrokeStyle(lineWidth: 2, lineCap: .round))
-                    .rotationEffect(.degrees(-90))
-                VStack(spacing: 12) {
-                    Text(state.text(state.timer.remaining == 0 ? "completed" : state.phaseTitle))
-                        .font(.callout).foregroundStyle(.secondary)
-                    Text(state.digits).font(.system(size: 65, weight: .regular, design: .monospaced))
-                        .tracking(-5).monospacedDigit()
-                    Text(state.text(state.timer.isRunning ? "stayHere" : "yourPace"))
-                        .font(.caption).foregroundStyle(.secondary)
-                }
-            }
-            .frame(width: 300, height: 300)
-            .accessibilityElement(children: .combine)
+            .padding(4).background(palette.surface, in: Capsule())
+            .overlay(Capsule().strokeBorder(palette.border))
+            .fixedSize(horizontal: true, vertical: false)
+
+            taskSelector
+
+            FocusDial(state: state)
+                .scaleEffect(compact ? 0.80 : 1)
+                .frame(width: compact ? 262 : 326, height: compact ? 262 : 326)
+                .padding(.vertical, 2)
             TimerTransport(state: state)
-            Divider()
-            HStack {
-                VStack(alignment: .leading, spacing: 7) {
-                    Text(state.text("currentTask")).font(.caption).foregroundStyle(.secondary)
-                    Text(state.currentTaskTitle ?? state.text("withoutTask")).font(.body)
-                    if state.currentTaskTitle != nil {
-                        Button(state.text("withoutTask")) { state.chooseTask(nil) }
-                            .buttonStyle(.link).disabled(state.timer.isRunning || state.hasProgress || !state.storageReady)
-                    }
-                }
-                Spacer()
-                Label(state.text("silence"), systemImage: "speaker.slash")
-                    .font(.callout).foregroundStyle(.secondary)
+
+            if !compact {
+            HStack(spacing: 8) {
+                Image(systemName: state.autoAdvance ? "repeat" : "arrow.right.circle")
+                Text(state.text(state.autoAdvance ? "automaticCycle" : "manualCycle"))
+            }.font(.system(size: 11)).foregroundStyle(.secondary)
             }
-            Text(state.text("prototypeNotice")).font(.caption).foregroundStyle(.secondary)
-                .frame(maxWidth: .infinity, alignment: .leading)
+
         }
+        .frame(maxWidth: .infinity)
+    }
+
+    private var taskSelector: some View {
+            Menu {
+                Button(state.text("withoutTask")) { state.chooseTask(nil) }
+                ForEach(state.dayTasks.filter { !$0.isCompleted }) { task in
+                    Button(task.title) { state.chooseTask(task) }
+                }
+                Divider()
+                Button(state.text("openTasks")) { state.screen = .tasks }
+            } label: {
+                HStack(spacing: 9) {
+                    Image(systemName: "scope").foregroundStyle(palette.accent)
+                    Text(state.currentTaskTitle ?? state.text("chooseFocusTask")).lineLimit(1)
+                    Image(systemName: "chevron.down").font(.system(size: 9, weight: .bold)).foregroundStyle(.tertiary)
+                }
+                .font(.system(size: 12, weight: .medium))
+
+            }
+            .menuStyle(.borderlessButton).frame(width: 260)
+            .padding(.horizontal, 14).padding(.vertical, 8)
+            .background(palette.surface, in: Capsule())
+            .overlay(Capsule().strokeBorder(palette.border))
+            .disabled(locked).help(state.text("focusOnTask"))
+
+    }
+
+    private func presetButton(_ title: String, selected: Bool, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Text(title).font(.system(size: 12, weight: selected ? .semibold : .medium)).monospacedDigit()
+                .foregroundStyle(selected ? palette.accent : Color.secondary)
+                .padding(.horizontal, 14).padding(.vertical, 8)
+                .background(selected ? palette.accent.opacity(0.12) : .clear, in: RoundedRectangle(cornerRadius: 9))
+        }.buttonStyle(FocusPressStyle()).disabled(locked)
     }
 
     private func phaseButton(_ title: String, phase: FocusTimer.Phase) -> some View {
-        Button(state.text(title)) { state.selectPhase(phase) }
-            .buttonStyle(.bordered).tint(state.timer.phase == phase ? .primary : .secondary)
-            .disabled(state.timer.isRunning || state.hasProgress || !state.storageReady)
+        Button { state.selectPhase(phase) } label: {
+            Text(state.text(title)).font(.system(size: 11, weight: .medium))
+                .foregroundStyle(state.timer.phase == phase ? Color.primary : .secondary)
+                .padding(.horizontal, 15).padding(.vertical, 9)
+                .background(state.timer.phase == phase ? palette.accent.opacity(0.16) : .clear, in: Capsule())
+                .overlay(Capsule().strokeBorder(state.timer.phase == phase ? palette.accent.opacity(0.25) : .clear))
+        }.buttonStyle(FocusPressStyle()).disabled(locked)
+            .accessibilityAddTraits(state.timer.phase == phase ? .isSelected : [])
     }
 
     private var dayPlan: some View {
-        VStack(alignment: .leading, spacing: 20) {
-            Text(state.text("dayPlan")).font(.callout).foregroundStyle(.secondary)
-            Text(state.selectedDate.formatted(.dateTime.locale(state.locale).day().month(.wide)))
-                .font(.system(size: 24, weight: .medium)).tracking(-0.7)
-            DatePicker(state.text("planDate"), selection: $state.selectedDate, displayedComponents: .date)
-                .labelsHidden().datePickerStyle(.field)
-            Divider()
-            ScrollView {
-                TaskRows(state: state)
+        VStack(alignment: .leading, spacing: 22) {
+            HStack {
+                Text(state.text("dayPlan")).font(.system(size: 15, weight: .semibold))
+                Spacer()
+                Text("\(state.dayTasks.filter(\.isCompleted).count)/\(state.dayTasks.count)")
+                    .font(.system(size: 11, weight: .medium, design: .monospaced)).foregroundStyle(.secondary)
             }
-            Button(state.text("openTasks")) { state.screen = .tasks }.buttonStyle(.bordered)
-            Spacer()
-        }.padding(24).frame(maxHeight: .infinity)
-            .background(Color(nsColor: .controlBackgroundColor))
+            Text(state.selectedDate.formatted(.dateTime.locale(state.locale).day().month(.wide)))
+                .font(.system(size: 25, weight: .medium, design: .rounded)).tracking(-0.6)
+            PlannerDatePicker(state: state)
+            Divider()
+            ScrollView { TaskRows(state: state) }
+            Button { state.screen = .tasks } label: {
+                Label(state.text("openTasks"), systemImage: "plus").frame(maxWidth: .infinity).padding(.vertical, 8)
+            }.buttonStyle(.bordered)
+        }.padding(24).frame(maxHeight: .infinity).background(.ultraThinMaterial)
     }
 }
 
@@ -170,6 +310,7 @@ struct StageNotice: View {
             Text(state.text(title)).font(.title2)
             Text(state.text(detail)).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
         }.padding(30).frame(maxWidth: .infinity, alignment: .leading)
-            .background(Color.primary.opacity(0.035), in: RoundedRectangle(cornerRadius: 18))
+            .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 20))
+            .overlay(RoundedRectangle(cornerRadius: 20).strokeBorder(Color.primary.opacity(0.07)))
     }
 }
