@@ -11,7 +11,7 @@ python3 -m http.server 4173 --bind 127.0.0.1 --directory landing/dist
 Then open http://127.0.0.1:4173/. Stop the server with Ctrl+C.
 You can also open `dist/index.html` directly in your browser; all assets are local.
 
-The download links point to `downloads/Focuselle-0.2.0-arm64.dmg`.
+The download links point to `downloads/Focuselle-0.3.0-arm64.dmg`.
 Build the installer with `./scripts/package-dmg.sh`. The reviewed versioned binary and checksum are kept with the landing source.
 
 Requirements: macOS 14+, Apple Silicon. The installer currently has an ad hoc signature,

@@ -1,9 +1,12 @@
-name: Deploy Focuselle landing
+name: Build Focuselle and deploy landing
 
 on:
   push:
     branches: [main]
     paths:
+      - 'Focuselle/**'
+      - 'scripts/**'
+      - 'Tests/**'
       - 'landing/dist/**'
       - '.github/workflows/deploy-pages.yml'
   workflow_dispatch:
@@ -18,23 +21,53 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  build:
+    runs-on: macos-15
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+      - name: Verify Apple Silicon runner
+        run: test "$(uname -m)" = arm64
+      - name: Run tests
+        run: ./scripts/test.sh
+      - name: Download verified official Sparkle SDK
+        run: ./scripts/prepare-sparkle.sh --refresh
+      - name: Build installer
+        run: ./scripts/package-dmg.sh
+      - name: Verify packaged app and prepare download metadata
+        run: ./scripts/verify-release.sh
+      - name: Upload built site
+        uses: actions/upload-artifact@v4
+        with:
+          name: focuselle-site-build
+          path: landing/dist
+          include-hidden-files: true
+          retention-days: 14
+
   deploy:
+    needs: build
     runs-on: ubuntu-latest
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
-      - name: Check out source
-        uses: actions/checkout@v4
-      - name: Verify installer checksum
-        working-directory: landing/dist/downloads
-        run: sha256sum --check Focuselle-0.2.0-arm64.dmg.sha256
+      - name: Download built site
+        uses: actions/download-artifact@v4
+        with:
+          name: focuselle-site-build
+          path: site
+      - name: Verify current installer checksum
+        working-directory: site
+        run: |
+          version=$(python3 -c 'import json; print(json.load(open("release.json"))["version"])')
+          cd downloads
+          sha256sum --check "Focuselle-$version-arm64.dmg.sha256"
       - name: Configure Pages
         uses: actions/configure-pages@v5
       - name: Upload landing and installer
         uses: actions/upload-pages-artifact@v3
         with:
-          path: landing/dist
+          path: site
       - name: Deploy Pages
         id: deployment
         uses: actions/deploy-pages@v4

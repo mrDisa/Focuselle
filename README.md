@@ -8,13 +8,13 @@
 
 <p align="center">
   <a href="https://mrdisa.github.io/Focuselle/">Сайт</a> ·
-  <a href="https://mrdisa.github.io/Focuselle/downloads/Focuselle-0.2.0-arm64.dmg">Скачать для Mac</a> ·
+  <a href="https://mrdisa.github.io/Focuselle/downloads/Focuselle-0.3.0-arm64.dmg">Скачать для Mac</a> ·
   <a href="#разработка">Собрать из исходников</a>
 </p>
 
 Focuselle помогает выбрать одну задачу, сосредоточиться на ней и вовремя отдохнуть. Таймер, план дня и статистика работают локально — без регистрации и подключения к серверу.
 
-**v0.2.0 · Early access · macOS 14+ · Apple Silicon (M1 и новее)**
+**v0.3.0 · Early access · macOS 14+ · Apple Silicon (M1 и новее)**
 
 ## Приложение
 
@@ -28,7 +28,7 @@ Focuselle помогает выбрать одну задачу, сосредо�
 
 [![Лендинг Focuselle с объёмной буквой F и кнопкой скачивания](media/screenshots/landing.png)](https://mrdisa.github.io/Focuselle/)
 
-[Открыть сайт](https://mrdisa.github.io/Focuselle/) · [Скачать .dmg](https://mrdisa.github.io/Focuselle/downloads/Focuselle-0.2.0-arm64.dmg)
+[Открыть сайт](https://mrdisa.github.io/Focuselle/) · [Скачать .dmg](https://mrdisa.github.io/Focuselle/downloads/Focuselle-0.3.0-arm64.dmg)
 
 ## Возможности
 
@@ -45,7 +45,7 @@ Focuselle помогает выбрать одну задачу, сосредо�
 
 ## Установка
 
-1. Скачай [Focuselle-0.2.0-arm64.dmg](https://mrdisa.github.io/Focuselle/downloads/Focuselle-0.2.0-arm64.dmg).
+1. Скачай [Focuselle-0.3.0-arm64.dmg](https://mrdisa.github.io/Focuselle/downloads/Focuselle-0.3.0-arm64.dmg).
 2. Открой образ и перенеси **Focuselle.app** в **Applications**.
 3. Запусти приложение из папки Applications.
 
@@ -100,7 +100,7 @@ Focuselle помогает выбрать одну задачу, сосредо�
 python3 -m http.server 4173 --bind 127.0.0.1 --directory landing/dist
 ```
 
-Открой http://127.0.0.1:4173/. Публикация на **GitHub Pages** настроена в [deploy-pages.yml](.github/workflows/deploy-pages.yml): изменения `landing/dist/` в `main` запускают проверку контрольной суммы установщика и деплой сайта.
+Открой http://127.0.0.1:4173/. Публикация на **GitHub Pages** настроена в [deploy-pages.yml](.github/workflows/deploy-pages.yml): изменения приложения, сборочных скриптов и `landing/dist/` в `main` запускают сборку на macOS (Apple Silicon), тесты, упаковку нового установщика, проверку версии внутри `.dmg` и деплой сайта. Готовый установщик создаётся в CI; метаданные опубликованной сборки доступны в `release.json` на сайте.
 
 <details>
 <summary>Локальные данные и восстановление</summary>
