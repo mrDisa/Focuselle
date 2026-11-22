@@ -36,12 +36,10 @@ jobs:
         run: ./scripts/package-dmg.sh
       - name: Verify packaged app and prepare download metadata
         run: ./scripts/verify-release.sh
-      - name: Upload built site
-        uses: actions/upload-artifact@v4
+      - name: Upload landing and verified installer
+        uses: actions/upload-pages-artifact@v3
         with:
-          name: focuselle-site-build
           path: landing/dist
-          include-hidden-files: true
           retention-days: 14
 
   deploy:
@@ -51,23 +49,8 @@ jobs:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
-      - name: Download built site
-        uses: actions/download-artifact@v4
-        with:
-          name: focuselle-site-build
-          path: site
-      - name: Verify current installer checksum
-        working-directory: site
-        run: |
-          version=$(python3 -c 'import json; print(json.load(open("release.json"))["version"])')
-          cd downloads
-          sha256sum --check "Focuselle-$version-arm64.dmg.sha256"
       - name: Configure Pages
         uses: actions/configure-pages@v5
-      - name: Upload landing and installer
-        uses: actions/upload-pages-artifact@v3
-        with:
-          path: site
       - name: Deploy Pages
         id: deployment
         uses: actions/deploy-pages@v4
