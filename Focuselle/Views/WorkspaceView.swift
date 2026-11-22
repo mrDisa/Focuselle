@@ -25,13 +25,13 @@ struct WorkspaceView: View {
                     Rectangle().fill(palette.border).frame(width: 1)
                     VStack(spacing: 0) {
                         ScrollView {
-                            VStack(alignment: .leading, spacing: 24) {
+                            VStack(alignment: .leading, spacing: 18) {
                                 header
                                 StorageStatusView(state: state)
                                 content(compact: geometry.size.height < 780)
                             }
-                            .padding(.horizontal, 28).padding(.vertical, 24)
-                            .frame(maxWidth: 880).frame(maxWidth: .infinity)
+                            .padding(.horizontal, 24).padding(.vertical, 20)
+                            .frame(maxWidth: 800).frame(maxWidth: .infinity)
                         }.id(state.screen)
                         footer
                     }
@@ -47,18 +47,22 @@ struct WorkspaceView: View {
                     if minimal {
                         Button {
                             NSApp.keyWindow?.setContentSize(NSSize(width: 1000, height: 800))
-                        } label: { Image(systemName: "arrow.up.left.and.arrow.down.right") }
+                        } label: { toolbarGlyph("arrow.up.left.and.arrow.down.right") }
+                        .controlSize(.regular)
                         .help(state.text("expandWorkspace"))
                     } else {
-                        Button(action: showMini) { Image(systemName: "pip") }
+                        Button(action: showMini) { toolbarGlyph("pip") }
+                            .controlSize(.regular)
                             .help(state.text("miniTimer"))
-                        Button { state.showPlan.toggle() } label: { Image(systemName: "sidebar.right") }
+                        Button { state.showPlan.toggle() } label: { toolbarGlyph("sidebar.right") }
+                            .controlSize(.regular)
                             .help(state.text("togglePlan"))
                     }
                 }
             }
         }
         .sheet(item: $state.editingTask) { task in TaskEditorView(state: state, task: task) }
+        .controlSize(.small)
         .tint(palette.accent)
         .frame(minWidth: 340, minHeight: 400)
         .onChange(of: state.screen) { _, screen in
@@ -72,8 +76,13 @@ struct WorkspaceView: View {
         .toolbarBackground(.ultraThinMaterial, for: .windowToolbar)
     }
 
+    private func toolbarGlyph(_ name: String) -> some View {
+        Image(systemName: name).font(.system(size: 15, weight: .medium))
+            .frame(width: 26, height: 24).contentShape(Rectangle())
+    }
+
     private func minimalFocus(size: CGSize) -> some View {
-        let diameter = max(180, min(326, size.width - 40, size.height - 170))
+        let diameter = max(180, min(290, size.width - 40, size.height - 160))
         return VStack(spacing: 14) {
             Spacer(minLength: 0)
             taskSelector
@@ -98,7 +107,7 @@ struct WorkspaceView: View {
             }.buttonStyle(.plain).help(state.text("transitionSounds"))
         }
         .font(.system(size: 11)).foregroundStyle(.secondary)
-        .padding(.horizontal, 24).padding(.vertical, 14)
+        .padding(.horizontal, 20).padding(.vertical, 11)
         .background(palette.background)
         .overlay(alignment: .top) { Rectangle().fill(palette.border).frame(height: 1) }
     }
@@ -107,9 +116,9 @@ struct WorkspaceView: View {
         HStack(alignment: .center) {
             VStack(alignment: .leading, spacing: 8) {
                 Text(Date.now.formatted(.dateTime.locale(state.locale).weekday(.wide).day().month(.wide)))
-                    .font(.system(size: 12, weight: .medium)).foregroundStyle(.secondary)
+                    .font(.system(size: 11, weight: .medium)).foregroundStyle(.secondary)
                 Text(state.text(state.screen.titleKey))
-                    .font(.system(size: 34, weight: .semibold, design: .rounded)).tracking(-1)
+                    .font(.system(size: 28, weight: .semibold, design: .rounded)).tracking(-1)
             }
             Spacer()
             if state.screen == .focus {
@@ -124,13 +133,13 @@ struct WorkspaceView: View {
 
     private var navigation: some View {
         VStack(spacing: 4) {
-            Image(systemName: "sun.max.fill").font(.system(size: 20, weight: .medium))
-                .foregroundStyle(palette.accent).frame(height: 56).accessibilityHidden(true)
+            Image(systemName: "sun.max.fill").font(.system(size: 16, weight: .medium))
+                .foregroundStyle(palette.accent).frame(height: 40).accessibilityHidden(true)
             ForEach(Screen.allCases.filter { $0 != .settings }) { item in navButton(item) }
             Spacer(minLength: 16)
             navButton(.settings)
         }
-        .padding(.vertical, 12).frame(width: 76).frame(maxHeight: .infinity)
+        .padding(.vertical, 8).frame(width: 52).frame(maxHeight: .infinity)
         .background(.ultraThinMaterial)
     }
 
@@ -140,17 +149,17 @@ struct WorkspaceView: View {
                 RoundedRectangle(cornerRadius: 14)
                     .fill(state.screen == item ? palette.accent.opacity(0.12) : .clear)
                     .overlay(RoundedRectangle(cornerRadius: 14).strokeBorder(state.screen == item ? palette.accent.opacity(0.18) : .clear))
-                    .frame(width: 46, height: 44)
-                Image(systemName: item.symbol).font(.system(size: 19, weight: .medium))
+                    .frame(width: 34, height: 32)
+                Image(systemName: item.symbol).font(.system(size: 16, weight: .medium))
                     .foregroundStyle(state.screen == item ? palette.accent : Color.secondary)
                 if state.screen == item {
                     Capsule().fill(palette.accent).frame(width: 3, height: 18).frame(maxWidth: .infinity, alignment: .leading)
                 }
             }
-            .frame(width: 76, height: 60)
+            .frame(width: 52, height: 48)
             .overlay(alignment: .bottom) {
                 if state.commandHeld {
-                    Text("⌘\(item.shortcutNumber)").font(.system(size: 10, weight: .semibold, design: .monospaced))
+                    Text("⌘\(item.shortcutNumber)").font(.system(size: 9, weight: .semibold, design: .monospaced))
                         .foregroundStyle(palette.accent).padding(.bottom, 1)
                 }
             }
@@ -173,7 +182,7 @@ struct WorkspaceView: View {
     }
 
     private func focus(compact: Bool) -> some View {
-        VStack(spacing: compact ? 12 : 16) {
+        VStack(spacing: compact ? 10 : 14) {
             HStack(spacing: 6) {
                 ForEach(state.presets.filter(\.isPinned)) { preset in
                     presetButton("\(preset.focusMinutes) / \(preset.shortBreakMinutes)",
@@ -218,8 +227,8 @@ struct WorkspaceView: View {
             taskSelector
 
             FocusDial(state: state)
-                .scaleEffect(compact ? 0.80 : 1)
-                .frame(width: compact ? 262 : 326, height: compact ? 262 : 326)
+                .scaleEffect(compact ? 0.72 : 0.88)
+                .frame(width: compact ? 235 : 287, height: compact ? 235 : 287)
                 .padding(.vertical, 2)
             TimerTransport(state: state)
 
@@ -251,8 +260,8 @@ struct WorkspaceView: View {
                 .font(.system(size: 12, weight: .medium))
 
             }
-            .menuStyle(.borderlessButton).frame(width: 260)
-            .padding(.horizontal, 14).padding(.vertical, 8)
+            .menuStyle(.borderlessButton).frame(width: 230)
+            .padding(.horizontal, 12).padding(.vertical, 6)
             .background(palette.surface, in: Capsule())
             .overlay(Capsule().strokeBorder(palette.border))
             .disabled(locked).help(state.text("focusOnTask"))
@@ -261,9 +270,9 @@ struct WorkspaceView: View {
 
     private func presetButton(_ title: String, selected: Bool, action: @escaping () -> Void) -> some View {
         Button(action: action) {
-            Text(title).font(.system(size: 12, weight: selected ? .semibold : .medium)).monospacedDigit()
+            Text(title).font(.system(size: 11, weight: selected ? .semibold : .medium)).monospacedDigit()
                 .foregroundStyle(selected ? palette.accent : Color.secondary)
-                .padding(.horizontal, 14).padding(.vertical, 8)
+                .padding(.horizontal, 12).padding(.vertical, 6)
                 .background(selected ? palette.accent.opacity(0.12) : .clear, in: RoundedRectangle(cornerRadius: 9))
         }.buttonStyle(FocusPressStyle()).disabled(locked)
     }
@@ -272,7 +281,7 @@ struct WorkspaceView: View {
         Button { state.selectPhase(phase) } label: {
             Text(state.text(title)).font(.system(size: 11, weight: .medium))
                 .foregroundStyle(state.timer.phase == phase ? Color.primary : .secondary)
-                .padding(.horizontal, 15).padding(.vertical, 9)
+                .padding(.horizontal, 12).padding(.vertical, 7)
                 .background(state.timer.phase == phase ? palette.accent.opacity(0.16) : .clear, in: Capsule())
                 .overlay(Capsule().strokeBorder(state.timer.phase == phase ? palette.accent.opacity(0.25) : .clear))
         }.buttonStyle(FocusPressStyle()).disabled(locked)

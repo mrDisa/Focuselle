@@ -1,0 +1,40 @@
+name: Deploy Focuselle landing
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'landing/dist/**'
+      - '.github/workflows/deploy-pages.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: github-pages
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+      - name: Verify installer checksum
+        working-directory: landing/dist/downloads
+        run: sha256sum --check Focuselle-0.2.0-arm64.dmg.sha256
+      - name: Configure Pages
+        uses: actions/configure-pages@v5
+      - name: Upload landing and installer
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: landing/dist
+      - name: Deploy Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

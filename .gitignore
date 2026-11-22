@@ -4,3 +4,11 @@ xcuserdata/
 *.xcuserstate
 /design/
 /docs/
+
+/generated_images/
+/landing/dist/downloads/*.dmg
+/landing/dist/downloads/*.sha256
+
+# Keep the reviewed early-access installer available with the landing source.
+!/landing/dist/downloads/Focuselle-0.2.0-arm64.dmg
+!/landing/dist/downloads/Focuselle-0.2.0-arm64.dmg.sha256

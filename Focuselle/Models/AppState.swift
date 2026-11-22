@@ -44,6 +44,8 @@ final class AppState: ObservableObject {
     @Published private(set) var storageError: String?
     @Published private(set) var restoredSession = false
     @Published private(set) var currentTaskTitle: String?
+    private let resourceBundle: Bundle
+    private let databaseURL: URL?
     private let defaults: UserDefaults
     private var store: FocusStore?
     private var controller: SessionController?
@@ -54,7 +56,9 @@ final class AppState: ObservableObject {
     private var resignObserver: NSObjectProtocol?
     private var transitionSound: NSSound?
 
-    init(defaults: UserDefaults = .standard) {
+    init(defaults: UserDefaults = .standard, storageURL: URL? = nil, resourceBundle: Bundle = .main) {
+        self.resourceBundle = resourceBundle
+        self.databaseURL = storageURL
         self.defaults = defaults
         soundEnabled = defaults.object(forKey: "soundEnabled") as? Bool ?? true
         autoAdvance = defaults.object(forKey: "autoAdvance") as? Bool ?? true
@@ -99,7 +103,7 @@ final class AppState: ObservableObject {
     var transportTitle: String { timer.isRunning ? "pause" : (hasProgress ? "resume" : "start") }
 
     func text(_ key: String) -> String {
-        guard let path = Bundle.main.path(forResource: language, ofType: "lproj"),
+        guard let path = resourceBundle.path(forResource: language, ofType: "lproj"),
               let bundle = Bundle(path: path) else { return key }
         return bundle.localizedString(forKey: key, value: key, table: nil)
     }
@@ -213,7 +217,7 @@ final class AppState: ObservableObject {
 
     private func openStorage() {
         perform {
-            let opened = try FocusStore(url: FocusStore.defaultURL())
+            let opened = try FocusStore(url: databaseURL ?? FocusStore.defaultURL())
             let restored = try SessionController(store: opened)
             store = opened
             controller = restored

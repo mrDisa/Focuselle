@@ -83,23 +83,23 @@ struct TimerTransport: View {
         HStack(spacing: 12) {
             Button { state.toggleTimer() } label: {
                 HStack(spacing: 10) {
-                    Image(systemName: state.timer.isRunning ? "pause.fill" : "play.fill").font(.system(size: 13, weight: .semibold))
-                    Text(state.text(state.transportTitle)).font(.system(size: 14, weight: .semibold))
+                    Image(systemName: state.timer.isRunning ? "pause.fill" : "play.fill").font(.system(size: 11, weight: .semibold))
+                    Text(state.text(state.transportTitle)).font(.system(size: 12, weight: .semibold))
                 }
-                .frame(minWidth: 126, minHeight: 48)
+                .frame(minWidth: 112, minHeight: 38)
                 .foregroundStyle(Color(hex: scheme == .dark ? 0xEDF3EE : 0x25372B))
-                .background(palette.highlight, in: RoundedRectangle(cornerRadius: 15))
-                .overlay(RoundedRectangle(cornerRadius: 15).strokeBorder(Color.white.opacity(0.14)))
+                .background(palette.highlight, in: RoundedRectangle(cornerRadius: 11))
+                .overlay(RoundedRectangle(cornerRadius: 11).strokeBorder(Color.white.opacity(0.14)))
                 .shadow(color: .black.opacity(0.10), radius: 6, x: 0, y: 3)
             }
             .buttonStyle(FocusPressStyle())
             .help(state.text(state.transportTitle)).accessibilityLabel(state.text(state.transportTitle))
             .disabled((state.timer.remaining == 0 && !state.autoAdvance) || !state.storageReady)
             Button { state.resetTimer() } label: {
-                Image(systemName: "arrow.counterclockwise").font(.system(size: 16, weight: .medium))
-                    .foregroundStyle(.secondary).frame(width: 48, height: 48)
-                    .background(palette.surface, in: RoundedRectangle(cornerRadius: 15))
-                    .overlay(RoundedRectangle(cornerRadius: 15).strokeBorder(palette.border))
+                Image(systemName: "arrow.counterclockwise").font(.system(size: 14, weight: .medium))
+                    .foregroundStyle(.secondary).frame(width: 38, height: 38)
+                    .background(palette.surface, in: RoundedRectangle(cornerRadius: 11))
+                    .overlay(RoundedRectangle(cornerRadius: 11).strokeBorder(palette.border))
             }
             .buttonStyle(FocusPressStyle()).disabled((!state.hasProgress && !state.timer.isRunning) || !state.storageReady)
             .help(state.text("reset")).accessibilityLabel(state.text("reset"))

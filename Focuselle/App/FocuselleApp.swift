@@ -13,8 +13,9 @@ struct FocuselleApp: App {
                 .preferredColorScheme(state.theme.scheme)
                 .environment(\.locale, state.locale)
         }
-        .defaultSize(width: 1140, height: 860)
+        .defaultSize(width: 1000, height: 740)
         .windowStyle(.titleBar)
+        .windowToolbarStyle(.unifiedCompact)
         .windowResizability(.contentMinSize)
         .commands {
             CommandGroup(replacing: .newItem) { }
@@ -56,9 +57,28 @@ struct FocuselleApp: App {
 @MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate {
     private var miniPanel: NSPanel?
+    private var appearanceObservation: NSKeyValueObservation?
+    private var dockIcons: [String: NSImage] = [:]
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApp.setActivationPolicy(.regular)
+        appearanceObservation = NSApp.observe(\.effectiveAppearance, options: [.initial, .new]) { [weak self] _, _ in
+            Task { @MainActor in self?.updateDockIcon() }
+        }
         NSApp.activate(ignoringOtherApps: true)
+    }
+    func applicationDidBecomeActive(_ notification: Notification) { updateDockIcon() }
+
+    private func updateDockIcon() {
+        // Follow macOS itself, independently of the appearance chosen inside Focuselle.
+        let dark = NSApp.effectiveAppearance.bestMatch(from: [.aqua, .darkAqua]) == .darkAqua
+        let name = dark ? "AppIcon" : "AppIconLight"
+        if dockIcons[name] == nil,
+           let url = Bundle.main.url(forResource: name, withExtension: dark ? "icns" : "png"),
+           let image = NSImage(contentsOf: url) {
+            image.isTemplate = false
+            dockIcons[name] = image
+        }
+        if let image = dockIcons[name] { NSApp.applicationIconImage = image }
     }
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool { false }
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
