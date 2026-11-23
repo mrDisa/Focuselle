@@ -1,6 +1,7 @@
 import base64
 import importlib.util
 import pathlib
+import re
 import plistlib
 import tempfile
 import unittest
@@ -34,6 +35,16 @@ class UpdatePackagingTests(unittest.TestCase):
         with zipfile.ZipFile(archive, 'w') as bundle:
             bundle.writestr('Focuselle.app/Contents/Info.plist', data)
         return archive
+
+    def test_landing_downloads_match_current_release(self):
+        root = pathlib.Path(__file__).resolve().parents[1]
+        info = plistlib.loads((root/'Focuselle/Info.plist').read_bytes())
+        version = info['CFBundleShortVersionString']
+        html = (root/'landing/dist/index.html').read_text()
+        links = re.findall(r'href="(downloads/[^\"]+\.dmg)"', html)
+        self.assertGreaterEqual(len(links), 2)
+        self.assertEqual(set(links), {'downloads/Focuselle-' + version + '-arm64.dmg'})
+        self.assertIn('V' + version + ' / EARLY ACCESS', html)
 
     def test_signed_feed_metadata_and_history(self):
         archive = self.archive()

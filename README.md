@@ -8,13 +8,13 @@
 
 <p align="center">
   <a href="https://mrdisa.github.io/Focuselle/">Сайт</a> ·
-  <a href="https://mrdisa.github.io/Focuselle/downloads/Focuselle-0.3.0-arm64.dmg">Скачать для Mac</a> ·
+  <a href="https://mrdisa.github.io/Focuselle/downloads/Focuselle-0.4.0-arm64.dmg">Скачать для Mac</a> ·
   <a href="#разработка">Собрать из исходников</a>
 </p>
 
 Focuselle помогает выбрать одну задачу, сосредоточиться на ней и вовремя отдохнуть. Таймер, план дня и статистика работают локально — без регистрации и подключения к серверу.
 
-**v0.3.0 · Early access · macOS 14+ · Apple Silicon (M1 и новее)**
+**v0.4.0 · Early access · macOS 14+ · Apple Silicon (M1 и новее)**
 
 ## Приложение
 
@@ -28,7 +28,7 @@ Focuselle помогает выбрать одну задачу, сосредо�
 
 [![Лендинг Focuselle с объёмной буквой F и кнопкой скачивания](media/screenshots/landing.png)](https://mrdisa.github.io/Focuselle/)
 
-[Открыть сайт](https://mrdisa.github.io/Focuselle/) · [Скачать .dmg](https://mrdisa.github.io/Focuselle/downloads/Focuselle-0.3.0-arm64.dmg)
+[Открыть сайт](https://mrdisa.github.io/Focuselle/) · [Скачать .dmg](https://mrdisa.github.io/Focuselle/downloads/Focuselle-0.4.0-arm64.dmg)
 
 ## Возможности
 
@@ -45,7 +45,7 @@ Focuselle помогает выбрать одну задачу, сосредо�
 
 ## Установка
 
-1. Скачай [Focuselle-0.3.0-arm64.dmg](https://mrdisa.github.io/Focuselle/downloads/Focuselle-0.3.0-arm64.dmg).
+1. Скачай [Focuselle-0.4.0-arm64.dmg](https://mrdisa.github.io/Focuselle/downloads/Focuselle-0.4.0-arm64.dmg).
 2. Открой образ и перенеси **Focuselle.app** в **Applications**.
 3. Запусти приложение из папки Applications.
 
@@ -162,3 +162,11 @@ python3 -m http.server 4173 --bind 127.0.0.1 --directory landing/dist
 `./scripts/test-appearance.sh` собирает приложение и проверяет сохранение настроек, выбор языка и наличие перевода каждой строки в собранном приложении. `./scripts/render-preview.sh` обновляет изображения четырёх вариантов оформления и изображение приложения на лендинге. Дополнительно создаются проверочные изображения настроек на японском, задач на немецком и статистики на китайском в `.build/appearance-previews`.
 
 Установщик использует актуальную иконку приложения и включает атрибут пользовательской иконки тома для Finder. Упаковка DMG требует официального Sparkle SDK с проверенной контрольной суммой, как и архив обновления.
+
+### Подписанные релизы
+
+Начиная с 0.4.0, Pages публикует вместе DMG, ZIP обновления и подписанную ленту Sparkle. Номер версии, номер сборки и ссылки лендинга повышаются перед релизом.
+
+CI использует секрет `FOCUS_UPDATE_SIGNING_KEY_B64`, если он настроен. Без секрета сборщик создаёт временный RSA-ключ и публикует только его открытую часть в `releases/update-signing-request.json`. Владелец проверяет идентификатор запуска и исходный коммит, затем создаёт ответ через `scripts/make-signing-envelope.py`. В `releases/update-signing-envelope.json` попадает только шифротекст RSA-OAEP SHA-256, привязанный к этому запуску и версии. Закрытый транспортный ключ остаётся на временном runner и удаляется после получения ответа. Исходный Ed25519-ключ сохраняется локально; открытый ключ приложения не меняется.
+
+Публикация прерывается, если ключ не совпадает с приложением, подпись ZIP неверна или лента ссылается на отсутствующий архив.

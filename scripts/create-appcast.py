@@ -73,5 +73,6 @@ if __name__ == '__main__':
     parser.add_argument('--archive', required=True, type=pathlib.Path)
     parser.add_argument('--signature', required=True)
     parser.add_argument('--output', required=True, type=pathlib.Path)
+    parser.add_argument('--base-url', default='https://mrdisa.github.io/Focuselle/')
     args = parser.parse_args()
-    create(args.app, args.archive, args.signature, args.output)
+    create(args.app, args.archive, args.signature, args.output, args.base_url)

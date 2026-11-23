@@ -22,6 +22,8 @@ concurrency:
 
 jobs:
   build:
+    permissions:
+      contents: write
     runs-on: macos-15
     steps:
       - name: Check out source
@@ -34,8 +36,22 @@ jobs:
         run: ./scripts/prepare-sparkle.sh --refresh
       - name: Build installer
         run: ./scripts/package-dmg.sh
-      - name: Verify packaged app and prepare download metadata
+      - name: Prepare release signing
+        env:
+          GH_TOKEN: ${{ github.token }}
+          FOCUS_UPDATE_SIGNING_KEY_B64: ${{ secrets.FOCUS_UPDATE_SIGNING_KEY_B64 }}
+        run: ./scripts/prepare-ci-signing.sh
+      - name: Build signed in-app update and appcast
+        run: ./scripts/package-update.sh
+      - name: Remove temporary signing keys
+        if: always()
+        run: rm -rf "$RUNNER_TEMP/focuselle-signing-$GITHUB_RUN_ID"
+      - name: Verify packaged app, signed update and download metadata
         run: ./scripts/verify-release.sh
+      - name: Publish immutable update assets
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: ./scripts/publish-github-release.sh
       - name: Upload landing and verified installer
         uses: actions/upload-pages-artifact@v3
         with:

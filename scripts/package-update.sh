@@ -21,6 +21,7 @@ ditto -c -k --sequesterRsrc --keepParent "$app" "$archive"
 signature=$(./scripts/update-signing.sh sign "$archive")
 ./scripts/update-signing.sh verify "$archive" "$public_key" "$signature"
 python3 scripts/create-appcast.py --app "$app" --archive "$archive" \
-    --signature "$signature" --output "$output/appcast.xml"
+    --signature "$signature" --output "$output/appcast.xml" \
+    --base-url "https://github.com/mrDisa/Focuselle/releases/download/v$version/"
 (cd "$output/downloads" && shasum -a 256 "$(basename "$archive")" > "$(basename "$archive").sha256")
 printf 'Prepared signed update: %s\nFeed: %s/appcast.xml\n' "$archive" "$output"

@@ -7,6 +7,7 @@ xcuserdata/
 
 /generated_images/
 /landing/dist/downloads/*.dmg
+/landing/dist/downloads/*.zip
 /landing/dist/downloads/*.sha256
 
 # Keep the reviewed early-access installer available with the landing source.

@@ -12,3 +12,5 @@ xcrun swiftc -module-cache-path "$PWD/.build/module-cache" \
 .build/StorageTests
 python3 Tests/UpdatePackagingTests.py
 bash scripts/test-update-signing.sh
+
+python3 Tests/ReleaseSigningTests.py
