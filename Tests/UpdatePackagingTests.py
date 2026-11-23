@@ -57,6 +57,14 @@ class UpdatePackagingTests(unittest.TestCase):
         builds = [i.findtext(appcast.tag('version')) for i in ET.parse(self.feed).findall('channel/item')]
         self.assertEqual(builds, ['4', '3'])
 
+    def test_github_release_asset_has_no_extra_downloads_directory(self):
+        archive = self.archive()
+        prefix = 'https://github.com/mrDisa/Focuselle/releases/download/v0.4.0/'
+        appcast.create(self.app, archive, self.signature, self.feed, download_base_url=prefix)
+        enclosure = ET.parse(self.feed).find('channel/item/enclosure')
+        self.assertEqual(enclosure.get('url'), prefix + archive.name)
+        self.assertNotIn('/v0.4.0/downloads/', enclosure.get('url'))
+
     def test_refuses_duplicate_or_downgrade(self):
         archive = self.archive('4')
         appcast.create(self.app, archive, self.signature, self.feed)

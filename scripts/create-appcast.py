@@ -16,7 +16,7 @@ ET.register_namespace('sparkle', SPARKLE)
 def tag(name):
     return '{' + SPARKLE + '}' + name
 
-def create(app, archive, signature, output, base_url='https://mrdisa.github.io/Focuselle/'):
+def create(app, archive, signature, output, base_url='https://mrdisa.github.io/Focuselle/', download_base_url=None):
     info = plistlib.loads((app / 'Contents/Info.plist').read_bytes())
     version = info['CFBundleShortVersionString']
     build = info['CFBundleVersion']
@@ -55,7 +55,7 @@ def create(app, archive, signature, output, base_url='https://mrdisa.github.io/F
     ET.SubElement(item, tag('shortVersionString')).text = version
     ET.SubElement(item, tag('minimumSystemVersion')).text = info.get('LSMinimumSystemVersion', '14.0')
     ET.SubElement(item, 'enclosure', {
-        'url': base_url.rstrip('/') + '/downloads/' + archive.name,
+        'url': (download_base_url or base_url.rstrip('/') + '/downloads/').rstrip('/') + '/' + archive.name,
         'length': str(archive.stat().st_size),
         'type': 'application/octet-stream',
         tag('edSignature'): signature,
@@ -74,5 +74,6 @@ if __name__ == '__main__':
     parser.add_argument('--signature', required=True)
     parser.add_argument('--output', required=True, type=pathlib.Path)
     parser.add_argument('--base-url', default='https://mrdisa.github.io/Focuselle/')
+    parser.add_argument('--download-base-url')
     args = parser.parse_args()
-    create(args.app, args.archive, args.signature, args.output, args.base_url)
+    create(args.app, args.archive, args.signature, args.output, args.base_url, args.download_base_url)
