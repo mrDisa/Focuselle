@@ -14,3 +14,5 @@ python3 Tests/UpdatePackagingTests.py
 bash scripts/test-update-signing.sh
 
 python3 Tests/ReleaseSigningTests.py
+
+./scripts/test-updates.sh
