@@ -21,6 +21,8 @@ struct StorageStatusView: View {
 struct TaskRows: View {
     @ObservedObject var state: AppState
     @PlannerState<FocusTask?> private var pendingDeletion = nil
+    @Environment(\.colorScheme) private var scheme
+    private var palette: FocusPalette { FocusPalette(phase: state.timer.phase, dark: scheme == .dark, style: state.visualStyle) }
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             if state.dayTasks.isEmpty {
@@ -32,7 +34,7 @@ struct TaskRows: View {
                     Button { state.toggleTask(task) } label: {
                         Image(systemName: task.isCompleted ? "checkmark.circle.fill" : "circle")
                             .font(.system(size: 17))
-                            .foregroundStyle(task.isCompleted ? Color.accentColor : Color.secondary)
+                            .foregroundStyle(task.isCompleted ? (state.visualStyle == .classic ? Color.accentColor : palette.accent) : Color.secondary)
                             .frame(width: 28, height: 32).contentShape(Rectangle())
                     }.buttonStyle(.plain)
                         .accessibilityLabel(state.text(task.isCompleted ? "markIncomplete" : "markComplete"))
@@ -49,8 +51,8 @@ struct TaskRows: View {
                     }.buttonStyle(.plain).help(state.text("editTask"))
                 }
                 .padding(.horizontal, 12).padding(.vertical, 10)
-                .background(Color.primary.opacity(0.025), in: RoundedRectangle(cornerRadius: 12))
-                .contentShape(RoundedRectangle(cornerRadius: 12))
+                .background(state.visualStyle == .focuselle ? palette.background : Color.primary.opacity(0.025), in: RoundedRectangle(cornerRadius: palette.radius(12)))
+                .contentShape(RoundedRectangle(cornerRadius: palette.radius(12)))
                 .contextMenu {
                     Button(state.text("focusOnTask")) { state.chooseTask(task) }
                         .disabled(task.isCompleted || state.timer.isRunning || state.hasProgress || !state.storageReady)
@@ -74,6 +76,8 @@ struct TaskRows: View {
 struct TaskEditorView: View {
     @ObservedObject var state: AppState
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.colorScheme) private var scheme
+    private var palette: FocusPalette { FocusPalette(phase: state.timer.phase, dark: scheme == .dark, style: state.visualStyle) }
     @PlannerState<FocusTask> private var draft: FocusTask
     init(state: AppState, task: FocusTask) {
         self.state = state
@@ -82,14 +86,14 @@ struct TaskEditorView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 18) {
             Text(state.text(state.tasks.contains { $0.id == draft.id } ? "editTask" : "newTask"))
-                .font(.system(size: 24, weight: .semibold, design: .rounded))
+                .font(.system(size: 24, weight: .semibold, design: state.visualStyle == .classic ? .rounded : .default))
             Text(state.text("taskTitle")).font(.caption).foregroundStyle(.secondary)
             TextField(state.text("taskTitle"), text: $draft.title).textFieldStyle(.roundedBorder)
             Text(state.text("taskDescription")).font(.caption).foregroundStyle(.secondary)
             TextEditor(text: $draft.details).font(.body).scrollContentBackground(.hidden)
                 .padding(10).frame(height: 140)
-                .background(Color.primary.opacity(0.04), in: RoundedRectangle(cornerRadius: 12))
-                .overlay(RoundedRectangle(cornerRadius: 12).strokeBorder(Color.primary.opacity(0.08)))
+                .background(Color.primary.opacity(0.04), in: RoundedRectangle(cornerRadius: palette.radius(12)))
+                .overlay(RoundedRectangle(cornerRadius: palette.radius(12)).strokeBorder(Color.primary.opacity(0.08)))
                 .accessibilityLabel(state.text("taskDescription"))
             if let error = state.storageError {
                 Text(error).font(.caption).foregroundStyle(.red)
@@ -104,6 +108,8 @@ struct TaskEditorView: View {
                     .disabled(draft.title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || !state.storageReady)
             }
         }.padding(28).frame(width: 440)
+            .background { if state.visualStyle == .focuselle { palette.background } }
+            .tint(palette.accent)
             .preferredColorScheme(state.theme.scheme).environment(\.locale, state.locale)
     }
 }
@@ -112,7 +118,7 @@ struct StatisticsView: View {
     @ObservedObject var state: AppState
     @PlannerState<Int> private var range = 7
     @Environment(\.colorScheme) private var scheme
-    private var palette: FocusPalette { FocusPalette(phase: .focus, dark: scheme == .dark) }
+    private var palette: FocusPalette { FocusPalette(phase: .focus, dark: scheme == .dark, style: state.visualStyle) }
     private var insights: FocusInsights { FocusInsights(sessions: state.sessions, endingAt: state.selectedDate, count: range) }
     var body: some View {
         VStack(alignment: .leading, spacing: 22) {
@@ -143,7 +149,7 @@ struct StatisticsView: View {
                                             state.text("interruptedSessions"): palette.accent.opacity(0.30)])
                 .chartXAxis {
                     AxisMarks(values: .stride(by: .day, count: range == 7 ? 1 : 7)) {
-                        AxisValueLabel(format: .dateTime.day().month(.abbreviated))
+                        AxisValueLabel(format: .dateTime.locale(state.locale).day().month(.abbreviated))
                     }
                 }
                 .chartYAxis { AxisMarks(position: .leading) }
@@ -153,8 +159,8 @@ struct StatisticsView: View {
                     Text(state.text("noInsights")).font(.system(size: 12)).foregroundStyle(.secondary)
                 }
                 Text(state.text("insightsMethod")).font(.system(size: 11)).foregroundStyle(.secondary)
-            }.padding(22).background(palette.surface, in: RoundedRectangle(cornerRadius: 20))
-                .overlay(RoundedRectangle(cornerRadius: 20).strokeBorder(palette.border))
+            }.padding(22).background(palette.surface, in: RoundedRectangle(cornerRadius: palette.radius(20)))
+                .overlay(RoundedRectangle(cornerRadius: palette.radius(20)).strokeBorder(palette.border))
             if !insights.tasks.isEmpty {
                 VStack(alignment: .leading, spacing: 18) {
                     Text(state.text("timeByTask")).font(.system(size: 17, weight: .semibold))
@@ -172,7 +178,7 @@ struct StatisticsView: View {
                             }.frame(height: 5)
                         }
                     }
-                }.padding(22).background(palette.surface, in: RoundedRectangle(cornerRadius: 20))
+                }.padding(22).background(palette.surface, in: RoundedRectangle(cornerRadius: palette.radius(20)))
             }
             SessionHistoryView(state: state)
         }
@@ -186,9 +192,9 @@ struct StatisticsView: View {
         VStack(alignment: .leading, spacing: 12) {
             Label(state.text(title), systemImage: icon).font(.system(size: 11)).foregroundStyle(.secondary)
                 .lineLimit(2).frame(height: 28, alignment: .topLeading)
-            Text(value).font(.system(size: 22, weight: .medium, design: .rounded)).monospacedDigit()
+            Text(value).font(.system(size: 22, weight: .medium, design: state.visualStyle == .classic ? .rounded : .default)).monospacedDigit()
         }.frame(maxWidth: .infinity, alignment: .leading).padding(16)
-            .background(palette.surface, in: RoundedRectangle(cornerRadius: 14))
+            .background(palette.surface, in: RoundedRectangle(cornerRadius: palette.radius(14)))
     }
 }
 
@@ -221,7 +227,7 @@ private typealias PlannerState<Value> = SwiftUI.State<Value>
 struct PlannerCalendarView: View {
     @ObservedObject var state: AppState
     @Environment(\.colorScheme) private var scheme
-    private var palette: FocusPalette { FocusPalette(phase: state.timer.phase, dark: scheme == .dark) }
+    private var palette: FocusPalette { FocusPalette(phase: state.timer.phase, dark: scheme == .dark, style: state.visualStyle) }
     private var focusMinutes: Int {
         Int(state.sessions.filter { $0.localDay == state.selectedDay }.reduce(0) { $0 + $1.focusSeconds } / 60)
     }
@@ -239,7 +245,7 @@ struct PlannerCalendarView: View {
                     VStack(alignment: .leading, spacing: 5) {
                         Text(state.text("dayPlan")).font(.system(size: 11, weight: .medium)).foregroundStyle(.secondary)
                         Text(state.selectedDate.formatted(.dateTime.locale(state.locale).weekday(.wide).day().month(.wide)))
-                            .font(.system(size: 20, weight: .medium, design: .rounded))
+                            .font(.system(size: 20, weight: .medium, design: state.visualStyle == .classic ? .rounded : .default))
                     }
                     Spacer()
                     Button { state.newTask() } label: {
@@ -252,12 +258,12 @@ struct PlannerCalendarView: View {
                     Button(state.text("addTask"), action: addTask)
                         .buttonStyle(.bordered)
                         .disabled(state.taskDraft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || !state.storageReady)
-                }.padding(12).background(palette.surface, in: RoundedRectangle(cornerRadius: 12))
+                }.padding(12).background(palette.surface, in: RoundedRectangle(cornerRadius: palette.radius(12)))
                 TaskRows(state: state)
             }
             .padding(22).frame(maxWidth: .infinity, alignment: .leading)
-            .background(palette.surface, in: RoundedRectangle(cornerRadius: 20))
-            .overlay(RoundedRectangle(cornerRadius: 20).strokeBorder(palette.border))
+            .background(palette.surface, in: RoundedRectangle(cornerRadius: palette.radius(20)))
+            .overlay(RoundedRectangle(cornerRadius: palette.radius(20)).strokeBorder(palette.border))
         }
     }
 
@@ -265,11 +271,11 @@ struct PlannerCalendarView: View {
         VStack(alignment: .leading, spacing: 12) {
             Label(state.text(title), systemImage: icon).font(.system(size: 11)).foregroundStyle(.secondary)
                 .lineLimit(2).frame(height: 28, alignment: .topLeading)
-            Text(value).font(.system(size: 20, weight: .medium, design: .rounded)).monospacedDigit()
+            Text(value).font(.system(size: 20, weight: .medium, design: state.visualStyle == .classic ? .rounded : .default)).monospacedDigit()
                 .lineLimit(1).minimumScaleFactor(0.7)
         }.frame(maxWidth: .infinity, alignment: .leading).padding(16)
-            .background(palette.surface, in: RoundedRectangle(cornerRadius: 14))
-            .overlay(RoundedRectangle(cornerRadius: 14).strokeBorder(palette.border))
+            .background(palette.surface, in: RoundedRectangle(cornerRadius: palette.radius(14)))
+            .overlay(RoundedRectangle(cornerRadius: palette.radius(14)).strokeBorder(palette.border))
     }
 
     private func addTask() {
@@ -283,7 +289,7 @@ struct MonthCalendarView: View {
     var small = false
     @PlannerState<Date> private var month = Date()
     @Environment(\.colorScheme) private var scheme
-    private var palette: FocusPalette { FocusPalette(phase: state.timer.phase, dark: scheme == .dark) }
+    private var palette: FocusPalette { FocusPalette(phase: state.timer.phase, dark: scheme == .dark, style: state.visualStyle) }
     private var calendar: Calendar { Calendar(identifier: .gregorian) }
     private var dates: [Date] { CalendarMonth.days(containing: month, calendar: calendar) }
     private var weekdayNames: [String] {
@@ -297,7 +303,7 @@ struct MonthCalendarView: View {
         VStack(spacing: small ? 16 : 24) {
             HStack(spacing: 10) {
                 Text(month.formatted(.dateTime.locale(state.locale).month(.wide).year()))
-                    .font(.system(size: small ? 17 : 25, weight: .medium, design: .rounded))
+                    .font(.system(size: small ? 17 : 25, weight: .medium, design: state.visualStyle == .classic ? .rounded : .default))
                 Spacer(minLength: 4)
                 Button(state.text("today")) {
                     state.selectedDate = Date()
@@ -317,8 +323,8 @@ struct MonthCalendarView: View {
             }
         }
         .padding(small ? 18 : 24)
-        .background(palette.surface, in: RoundedRectangle(cornerRadius: 20))
-        .overlay(RoundedRectangle(cornerRadius: 20).strokeBorder(palette.border))
+        .background(palette.surface, in: RoundedRectangle(cornerRadius: palette.radius(20)))
+        .overlay(RoundedRectangle(cornerRadius: palette.radius(20)).strokeBorder(palette.border))
         .onAppear { month = state.selectedDate }
         .onChange(of: state.selectedDate) { _, date in month = date }
     }

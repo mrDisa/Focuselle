@@ -15,6 +15,14 @@ actual = plistlib.loads((app / 'Contents/Info.plist').read_bytes())
 for key in ('CFBundleShortVersionString', 'CFBundleVersion', 'CFBundleIdentifier', 'SUPublicEDKey', 'SUFeedURL'):
     if expected[key] != actual[key]:
         raise SystemExit('Installer metadata mismatch: ' + key)
+icon = Path('Focuselle/Resources/AppIcon.icns').read_bytes()
+if (app / 'Contents/Resources/AppIcon.icns').read_bytes() != icon:
+    raise SystemExit('Installer contains an outdated application icon')
+if (app.parent / '.VolumeIcon.icns').read_bytes() != icon:
+    raise SystemExit('Installer volume icon does not match the app')
+attributes = subprocess.check_output(['GetFileInfo', '-a', str(app.parent)], text=True).strip()
+if 'C' not in attributes:
+    raise SystemExit('Installer volume custom icon is not enabled')
 version = actual['CFBundleShortVersionString']
 if not re.fullmatch(r'\d+\.\d+\.\d+', version):
     raise SystemExit('Invalid release version')

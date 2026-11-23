@@ -1,6 +1,7 @@
 #!/bin/bash
 set -euo pipefail
 cd "$(dirname "$0")/.."
+./scripts/build.sh
 sparkle_sdk=$(./scripts/prepare-sparkle.sh)
 sources=()
 while IFS= read -r file; do sources+=("$file"); done < <(find Focuselle -name '*.swift' ! -path '*/App/*' -print | sort)

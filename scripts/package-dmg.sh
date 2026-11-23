@@ -1,6 +1,11 @@
 #!/bin/bash
 set -euo pipefail
 cd "$(dirname "$0")/.."
+sdk=$(./scripts/prepare-sparkle.sh)
+if [[ ! -f "$sdk/.verified-sdk" ]]; then
+    echo 'Installer packaging requires the official checksum-verified Sparkle SDK. Run scripts/prepare-sparkle.sh --refresh.' >&2
+    exit 1
+fi
 ./scripts/build.sh
 version=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' .build/Focuselle.app/Contents/Info.plist)
 stage="$PWD/.build/dmg-stage"
@@ -26,8 +31,22 @@ Tasks and focus sessions stay on your Mac.
 Source: https://github.com/mrDisa/Focuselle
 TEXT
 output="$PWD/landing/dist/downloads/Focuselle-$version-arm64.dmg"
-# Native image creation preserves executable metadata without makehybrid's Finder attributes.
-hdiutil create -volname Focuselle -srcfolder "$stage" -fs HFS+ -format UDZO -ov "$output"
+# Finder needs the custom-icon attribute on the volume, as well as .VolumeIcon.icns.
+# Set it on a writable image before creating the compressed installer.
+writable="$PWD/.build/Focuselle-installer-rw.dmg"
+mount=$(mktemp -d "$PWD/.build/installer-volume.XXXXXX")
+cleanup() {
+    if [[ -e "$mount/Focuselle.app" ]]; then
+        hdiutil detach "$mount" -quiet || true
+    fi
+    rmdir "$mount" 2>/dev/null || true
+}
+trap cleanup EXIT
+hdiutil create -volname Focuselle -srcfolder "$stage" -fs HFS+ -format UDRW -ov "$writable"
+hdiutil attach "$writable" -nobrowse -noautoopen -mountpoint "$mount"
+SetFile -a C "$mount"
+hdiutil detach "$mount" -quiet
+hdiutil convert "$writable" -format UDZO -o "$output" -ov
 hdiutil verify "$output"
 (cd "$(dirname "$output")" && shasum -a 256 "$(basename "$output")" > "$(basename "$output").sha256")
 printf 'Packaged: %s\n' "$output"

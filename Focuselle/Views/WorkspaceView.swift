@@ -12,7 +12,7 @@ struct WorkspaceView: View {
     @ViewState<Bool> private var showCustom = false
     @ViewState<Int> private var customWork = 40
     @ViewState<Int> private var customRest = 8
-    private var palette: FocusPalette { FocusPalette(phase: state.timer.phase, dark: scheme == .dark) }
+    private var palette: FocusPalette { FocusPalette(phase: state.timer.phase, dark: scheme == .dark, style: state.visualStyle) }
     private var locked: Bool { state.timer.isRunning || state.hasProgress || !state.storageReady }
 
     init(state: AppState, showMini: @escaping () -> Void) {
@@ -35,7 +35,7 @@ struct WorkspaceView: View {
                             VStack(alignment: .leading, spacing: 18) {
                                 header
                                 StorageStatusView(state: state)
-                                content(compact: geometry.size.height < 780)
+                                content(compact: geometry.size.height < (state.visualStyle == .focuselle ? 700 : 780))
                             }
                             .padding(.horizontal, geometry.size.width < 540 ? 16 : 24).padding(.vertical, 20)
                             .frame(maxWidth: 800).frame(maxWidth: .infinity)
@@ -114,14 +114,14 @@ struct WorkspaceView: View {
                 .font(.system(size: 11, weight: .medium)).foregroundStyle(.secondary)
             HStack(alignment: .center) {
                 Text(state.text(state.screen.titleKey))
-                    .font(.system(size: 28, weight: .semibold, design: .rounded)).tracking(-1)
+                    .font(state.visualStyle == .focuselle ? .custom("Helvetica Neue", size: 34).weight(.bold) : .system(size: 28, weight: .semibold, design: .rounded)).tracking(state.visualStyle == .classic ? -1 : -1.2)
                 Spacer(minLength: 8)
                 if state.screen == .focus {
                     Label(state.text(state.timer.isRunning ? "sessionActive" : "readyToFocus"),
                           systemImage: state.timer.isRunning ? "waveform" : "sparkle")
                         .font(.system(size: 11, weight: .medium)).foregroundStyle(palette.accent)
                         .padding(.horizontal, 12).padding(.vertical, 8)
-                        .background(palette.accent.opacity(0.09), in: Capsule())
+                        .background(palette.accent.opacity(0.09), in: palette.pill)
                 }
             }
         }
@@ -149,19 +149,21 @@ struct WorkspaceView: View {
             navButton(.settings)
         }
         .padding(.vertical, 8).frame(width: 52).frame(maxHeight: .infinity)
-        .background(.ultraThinMaterial)
+        .background {
+            if state.visualStyle == .classic { Rectangle().fill(.ultraThinMaterial) } else { palette.panel }
+        }
     }
 
     private func navButton(_ item: Screen) -> some View {
         Button { state.screen = item } label: {
             ZStack {
-                RoundedRectangle(cornerRadius: 14)
-                    .fill(state.screen == item ? palette.accent.opacity(0.12) : .clear)
-                    .overlay(RoundedRectangle(cornerRadius: 14).strokeBorder(state.screen == item ? palette.accent.opacity(0.18) : .clear))
+                RoundedRectangle(cornerRadius: palette.radius(14))
+                    .fill(state.screen == item ? palette.accent.opacity(state.visualStyle == .focuselle ? 1 : 0.12) : .clear)
+                    .overlay(RoundedRectangle(cornerRadius: palette.radius(14)).strokeBorder(state.screen == item ? palette.accent.opacity(0.18) : .clear))
                     .frame(width: 34, height: 32)
                 Image(systemName: item.symbol).font(.system(size: 16, weight: .medium))
-                    .foregroundStyle(state.screen == item ? palette.accent : Color.secondary)
-                if state.screen == item {
+                    .foregroundStyle(state.screen == item ? (state.visualStyle == .focuselle ? palette.buttonInk : palette.accent) : Color.secondary)
+                if state.screen == item && state.visualStyle == .classic {
                     Capsule().fill(palette.accent).frame(width: 3, height: 18).frame(maxWidth: .infinity, alignment: .leading)
                 }
             }
@@ -169,7 +171,7 @@ struct WorkspaceView: View {
             .overlay(alignment: .bottom) {
                 if state.commandHeld {
                     Text("⌘\(item.shortcutNumber)").font(.system(size: 9, weight: .semibold, design: .monospaced))
-                        .foregroundStyle(palette.accent).padding(.bottom, 1)
+                        .foregroundStyle(palette.accent).offset(y: 6)
                 }
             }
             .contentShape(Rectangle())
@@ -190,7 +192,83 @@ struct WorkspaceView: View {
         }
     }
 
-    private func focus(compact: Bool) -> some View {
+    @ViewBuilder private func focus(compact: Bool) -> some View {
+        if state.visualStyle == .focuselle { modernFocus(compact: compact) }
+        else { originalFocus(compact: compact) }
+    }
+
+    private func modernFocus(compact: Bool) -> some View {
+        VStack(spacing: compact ? 14 : 18) {
+            HStack(spacing: 4) {
+                modeTab("focus", phase: .focus)
+                modeTab("shortBreak", phase: .shortBreak)
+                modeTab("longBreak", phase: .longBreak)
+            }.frame(maxWidth: 360)
+
+            FocusDial(state: state)
+                .scaleEffect(compact ? 0.66 : 0.88)
+                .frame(width: compact ? 216 : 287, height: compact ? 216 : 287)
+            TimerTransport(state: state)
+
+            HStack(spacing: 14) {
+                presetMenu
+                Rectangle().fill(palette.border).frame(width: 1, height: 16)
+                Menu { taskMenuItems } label: {
+                    HStack(spacing: 7) {
+                        Image(systemName: "scope")
+                        Text(state.currentTaskTitle ?? state.text("chooseFocusTask")).lineLimit(1)
+                    }.font(.system(size: 11, weight: .medium)).foregroundStyle(.secondary)
+                }
+                .menuStyle(.borderlessButton).menuIndicator(.visible)
+                .frame(maxWidth: .infinity).disabled(locked)
+                .help(state.currentTaskTitle ?? state.text("chooseFocusTask"))
+            }
+            .padding(.horizontal, 14).padding(.vertical, 10)
+            .frame(maxWidth: 360).padding(.top, compact ? 2 : 8)
+
+            if !compact {
+                Text(state.text(state.autoAdvance ? "automaticCycle" : "manualCycle"))
+                    .font(.system(size: 11)).foregroundStyle(.tertiary)
+            }
+        }.frame(maxWidth: .infinity)
+    }
+
+    private func modeTab(_ title: String, phase: FocusTimer.Phase) -> some View {
+        let selected = state.timer.phase == phase
+        return Button { state.selectPhase(phase) } label: {
+            Text(state.text(title))
+                .font(.system(size: 12, weight: selected ? .semibold : .medium))
+                .foregroundStyle(selected ? palette.ink : .secondary)
+                .lineLimit(1).minimumScaleFactor(0.8)
+                .padding(.horizontal, 6).padding(.vertical, 12).frame(maxWidth: .infinity)
+                .overlay(alignment: .bottom) {
+                    Capsule().fill(selected ? palette.accent : .clear).frame(width: 20, height: 2)
+                }.contentShape(Rectangle())
+        }.buttonStyle(FocusPressStyle()).disabled(locked)
+            .accessibilityAddTraits(selected ? .isSelected : [])
+    }
+
+    private var presetMenu: some View {
+        Menu {
+            ForEach(state.presets.filter(\.isPinned)) { preset in
+                Button("\(preset.focusMinutes) / \(preset.shortBreakMinutes)") {
+                    state.selectPreset(work: preset.focusMinutes, rest: preset.shortBreakMinutes)
+                }
+            }
+            Divider()
+            Button(state.text("customPreset")) { openCustomPreset() }
+        } label: {
+            HStack(spacing: 7) {
+                Image(systemName: "slider.horizontal.3")
+                Text("\(state.workMinutes) / \(state.restMinutes)").monospacedDigit()
+            }.font(.system(size: 11, weight: .medium)).foregroundStyle(.secondary)
+        }
+        .menuStyle(.borderlessButton).menuIndicator(.visible).fixedSize()
+        .disabled(locked).help(state.text("timerSettings"))
+        .popover(isPresented: $showCustom) { customPresetEditor }
+    }
+
+    private func originalFocus(compact: Bool) -> some View {
         VStack(spacing: compact ? 10 : 14) {
             ViewThatFits(in: .horizontal) {
                 HStack(spacing: 6) { presetControls }
@@ -199,23 +277,23 @@ struct WorkspaceView: View {
                     presetControls
                 }
             }
-            .padding(6).background(palette.surface, in: RoundedRectangle(cornerRadius: 14))
-            .overlay(RoundedRectangle(cornerRadius: 14).strokeBorder(palette.border))
+            .padding(6).background(palette.surface, in: RoundedRectangle(cornerRadius: palette.radius(14)))
+            .overlay(RoundedRectangle(cornerRadius: palette.radius(14)).strokeBorder(palette.border))
 
             HStack(spacing: 4) {
                 phaseButton("focus", phase: .focus)
                 phaseButton("shortBreak", phase: .shortBreak)
                 phaseButton("longBreak", phase: .longBreak)
             }
-            .padding(4).background(palette.surface, in: Capsule())
-            .overlay(Capsule().strokeBorder(palette.border))
+            .padding(4).background(palette.surface, in: palette.pill)
+            .overlay(palette.pill.strokeBorder(palette.border))
 
             taskSelector
 
             FocusDial(state: state)
                 .scaleEffect(compact ? 0.66 : 0.88)
                 .frame(width: compact ? 216 : 287, height: compact ? 216 : 287)
-                .padding(.vertical, 2)
+                .padding(.vertical, state.visualStyle == .focuselle ? 12 : 2)
             TimerTransport(state: state)
 
             if !compact {
@@ -236,68 +314,76 @@ struct WorkspaceView: View {
             }
         }
         presetButton(state.text("customPreset"), selected: !state.presets.contains { $0.focusMinutes == state.workMinutes && $0.shortBreakMinutes == state.restMinutes }) {
-            customWork = state.workMinutes
-            customRest = state.restMinutes
-            showCustom = true
+            openCustomPreset()
         }
-        .popover(isPresented: $showCustom) {
-            VStack(alignment: .leading, spacing: 18) {
-                Text(state.text("customPreset")).font(.headline)
-                Stepper(value: $customWork, in: 1...240) {
-                    Text("\(state.text("focus")): \(customWork) \(state.text("minutes"))")
-                }
-                Stepper(value: $customRest, in: 1...120) {
-                    Text("\(state.text("shortBreak")): \(customRest) \(state.text("minutes"))")
-                }
-                Button(state.text("applyPreset")) {
-                    state.selectPreset(work: customWork, rest: customRest)
-                    showCustom = false
-                }.buttonStyle(.borderedProminent).disabled(locked)
-            }.padding(24).frame(width: 300)
-        }
+        .popover(isPresented: $showCustom) { customPresetEditor }
+    }
+
+    private func openCustomPreset() {
+        customWork = state.workMinutes
+        customRest = state.restMinutes
+        showCustom = true
+    }
+
+    private var customPresetEditor: some View {
+        VStack(alignment: .leading, spacing: 18) {
+            Text(state.text("customPreset")).font(.headline)
+            Stepper(value: $customWork, in: 1...240) {
+                Text("\(state.text("focus")): \(customWork) \(state.text("minutes"))")
+            }
+            Stepper(value: $customRest, in: 1...120) {
+                Text("\(state.text("shortBreak")): \(customRest) \(state.text("minutes"))")
+            }
+            Button(state.text("applyPreset")) {
+                state.selectPreset(work: customWork, rest: customRest)
+                showCustom = false
+            }.buttonStyle(.borderedProminent).disabled(locked)
+        }.padding(24).frame(width: 300)
     }
 
     private var taskSelector: some View {
-            Menu {
-                Button(state.text("withoutTask")) { state.chooseTask(nil) }
-                ForEach(state.dayTasks.filter { !$0.isCompleted }) { task in
-                    Button(task.title) { state.chooseTask(task) }
-                }
-                Divider()
-                Button(state.text("openTasks")) { state.screen = .tasks }
-            } label: {
-                HStack(spacing: 9) {
-                    Image(systemName: "scope").foregroundStyle(palette.accent)
-                    Text(state.currentTaskTitle ?? state.text("chooseFocusTask")).lineLimit(1)
-                    Image(systemName: "chevron.down").font(.system(size: 9, weight: .bold)).foregroundStyle(.tertiary)
-                }
-                .font(.system(size: 12, weight: .medium))
-
+        Menu { taskMenuItems } label: {
+            HStack(spacing: 9) {
+                Image(systemName: "scope").foregroundStyle(palette.accent)
+                Text(state.currentTaskTitle ?? state.text("chooseFocusTask")).lineLimit(1)
+                Image(systemName: "chevron.down").font(.system(size: 9, weight: .bold)).foregroundStyle(.tertiary)
             }
-            .menuStyle(.borderlessButton).frame(width: 230)
-            .padding(.horizontal, 12).padding(.vertical, 6)
-            .background(palette.surface, in: Capsule())
-            .overlay(Capsule().strokeBorder(palette.border))
-            .disabled(locked).help(state.text("focusOnTask"))
+            .font(.system(size: 12, weight: .medium))
 
+        }
+        .menuStyle(.borderlessButton).frame(width: 230)
+        .padding(.horizontal, 12).padding(.vertical, 6)
+        .background(palette.surface, in: palette.pill)
+        .overlay(palette.pill.strokeBorder(palette.border))
+        .disabled(locked).help(state.text("focusOnTask"))
+
+    }
+
+    @ViewBuilder private var taskMenuItems: some View {
+        Button(state.text("withoutTask")) { state.chooseTask(nil) }
+        ForEach(state.dayTasks.filter { !$0.isCompleted }) { task in
+            Button(task.title) { state.chooseTask(task) }
+        }
+        Divider()
+        Button(state.text("openTasks")) { state.screen = .tasks }
     }
 
     private func presetButton(_ title: String, selected: Bool, action: @escaping () -> Void) -> some View {
         Button(action: action) {
             Text(title).font(.system(size: 11, weight: selected ? .semibold : .medium)).monospacedDigit()
-                .foregroundStyle(selected ? palette.accent : Color.secondary)
+                .foregroundStyle(selected ? (state.visualStyle == .focuselle ? palette.buttonInk : palette.accent) : Color.secondary)
                 .padding(.horizontal, 12).padding(.vertical, 6)
-                .background(selected ? palette.accent.opacity(0.12) : .clear, in: RoundedRectangle(cornerRadius: 9))
+                .background(selected ? palette.accent.opacity(state.visualStyle == .focuselle ? 1 : 0.12) : .clear, in: RoundedRectangle(cornerRadius: state.visualStyle == .focuselle ? 13 : 9))
         }.buttonStyle(FocusPressStyle()).disabled(locked)
     }
 
     private func phaseButton(_ title: String, phase: FocusTimer.Phase) -> some View {
         Button { state.selectPhase(phase) } label: {
             Text(state.text(title)).font(.system(size: 11, weight: .medium))
-                .foregroundStyle(state.timer.phase == phase ? Color.primary : .secondary)
+                .foregroundStyle(state.timer.phase == phase ? (state.visualStyle == .focuselle ? palette.buttonInk : Color.primary) : .secondary)
                 .padding(.horizontal, 8).padding(.vertical, 7)
-                .background(state.timer.phase == phase ? palette.accent.opacity(0.16) : .clear, in: Capsule())
-                .overlay(Capsule().strokeBorder(state.timer.phase == phase ? palette.accent.opacity(0.25) : .clear))
+                .background(state.timer.phase == phase ? palette.accent.opacity(state.visualStyle == .focuselle ? 1 : 0.16) : .clear, in: palette.pill)
+                .overlay(palette.pill.strokeBorder(state.timer.phase == phase ? palette.accent.opacity(0.25) : .clear))
         }.buttonStyle(FocusPressStyle()).disabled(locked)
             .accessibilityAddTraits(state.timer.phase == phase ? .isSelected : [])
     }
@@ -311,14 +397,16 @@ struct WorkspaceView: View {
                     .font(.system(size: 11, weight: .medium, design: .monospaced)).foregroundStyle(.secondary)
             }
             Text(state.selectedDate.formatted(.dateTime.locale(state.locale).day().month(.wide)))
-                .font(.system(size: 25, weight: .medium, design: .rounded)).tracking(-0.6)
+                .font(.system(size: 25, weight: .medium, design: state.visualStyle == .classic ? .rounded : .default)).tracking(-0.6)
             PlannerDatePicker(state: state)
             Divider()
             ScrollView { TaskRows(state: state).background(QuietScrollStyle()) }
             Button { state.screen = .tasks } label: {
                 Label(state.text("openTasks"), systemImage: "plus").frame(maxWidth: .infinity).padding(.vertical, 8)
             }.buttonStyle(.bordered)
-        }.padding(24).frame(maxHeight: .infinity).background(.ultraThinMaterial)
+        }.padding(24).frame(maxHeight: .infinity).background {
+            if state.visualStyle == .classic { Rectangle().fill(.ultraThinMaterial) } else { palette.panel }
+        }
     }
 }
 

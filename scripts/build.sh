@@ -19,7 +19,8 @@ cp Focuselle/Info.plist "$app/Contents/Info.plist"
 python3 - "$app/Contents/Resources" <<'PY'
 import json, pathlib, sys
 catalog = json.loads(pathlib.Path('Focuselle/Resources/Localizable.xcstrings').read_text())
-for lang in ('ru', 'en'):
+languages = sorted({lang for entry in catalog['strings'].values() for lang in entry.get('localizations', {})})
+for lang in languages:
     folder = pathlib.Path(sys.argv[1]) / (lang + '.lproj')
     folder.mkdir(exist_ok=True)
     rows = []

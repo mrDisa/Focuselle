@@ -23,12 +23,46 @@ enum Theme: String, CaseIterable { case system, light, dark
     }
 }
 
+enum VisualStyle: String, CaseIterable {
+    // Keep stored identifiers stable when renaming the styles in the interface.
+    case focuselle, classic
+    var title: String { self == .focuselle ? "Classic" : "Olive" }
+}
+
+enum AppLanguage: String, CaseIterable {
+    case ru, en, ja, chinese = "zh-Hans", ko, de, fr, es, portuguese = "pt-BR"
+    var title: String {
+        switch self {
+        case .ru: "Русский"
+        case .en: "English"
+        case .ja: "日本語"
+        case .chinese: "简体中文"
+        case .ko: "한국어"
+        case .de: "Deutsch"
+        case .fr: "Français"
+        case .es: "Español"
+        case .portuguese: "Português (Brasil)"
+        }
+    }
+    static func preferred(_ languages: [String]) -> String {
+        for identifier in languages {
+            if let match = allCases.first(where: { identifier == $0.rawValue }) { return match.rawValue }
+            let base = identifier.split(separator: "-").first.map(String.init)
+            if base == "zh" { return chinese.rawValue }
+            if base == "pt" { return portuguese.rawValue }
+            if let match = allCases.first(where: { $0.rawValue == base }) { return match.rawValue }
+        }
+        return "en"
+    }
+}
+
 @MainActor
 final class AppState: ObservableObject {
     let updates = UpdateController()
     @Published var screen: Screen = .focus
     @Published var timer = FocusTimer()
     @Published var showPlan: Bool { didSet { defaults.set(showPlan, forKey: "showPlan") } }
+    @Published var visualStyle: VisualStyle { didSet { defaults.set(visualStyle.rawValue, forKey: "visualStyle") } }
     @Published var theme: Theme { didSet { defaults.set(theme.rawValue, forKey: "theme") } }
     @Published var language: String { didSet { defaults.set(language, forKey: "language") } }
     @Published var soundEnabled: Bool { didSet { defaults.set(soundEnabled, forKey: "soundEnabled") } }
@@ -63,8 +97,10 @@ final class AppState: ObservableObject {
         self.defaults = defaults
         soundEnabled = defaults.object(forKey: "soundEnabled") as? Bool ?? true
         autoAdvance = defaults.object(forKey: "autoAdvance") as? Bool ?? true
+        let savedStyle = defaults.string(forKey: "visualStyle") ?? "focuselle"
+        visualStyle = VisualStyle(rawValue: savedStyle == "olive" ? "classic" : savedStyle) ?? .focuselle
         theme = Theme(rawValue: defaults.string(forKey: "theme") ?? "system") ?? .system
-        language = defaults.string(forKey: "language") ?? (Locale.preferredLanguages.first?.hasPrefix("ru") == true ? "ru" : "en")
+        language = AppLanguage.preferred([defaults.string(forKey: "language")].compactMap { $0 } + Locale.preferredLanguages)
         showPlan = defaults.object(forKey: "showPlan") as? Bool ?? true
         modifierMonitor = NSEvent.addLocalMonitorForEvents(matching: .flagsChanged) { [weak self] event in
             MainActor.assumeIsolated { self?.commandHeld = event.modifierFlags.contains(.command) }
@@ -105,7 +141,11 @@ final class AppState: ObservableObject {
 
     func text(_ key: String) -> String {
         guard let path = resourceBundle.path(forResource: language, ofType: "lproj"),
-              let bundle = Bundle(path: path) else { return key }
+              let bundle = Bundle(path: path) else {
+            guard let fallbackPath = resourceBundle.path(forResource: "en", ofType: "lproj"),
+                  let fallback = Bundle(path: fallbackPath) else { return key }
+            return fallback.localizedString(forKey: key, value: key, table: nil)
+        }
         return bundle.localizedString(forKey: key, value: key, table: nil)
     }
     var selectedDay: String { LocalDay.string(selectedDate) }
