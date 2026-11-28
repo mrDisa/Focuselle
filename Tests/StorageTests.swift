@@ -145,6 +145,8 @@ struct StorageTests {
 
         do {
             let store = try FocusStore(url: directory.appendingPathComponent("cycle.sqlite"))
+            let task = FocusTask(title: "Unfinished cycle task", plannedDay: day)
+            try store.saveTask(task)
             let controller = try SessionController(store: store)
             try controller.select(phase: .focus, work: 1, rest: 2)
             try controller.selectTask(task)
@@ -188,6 +190,32 @@ struct StorageTests {
             try expect(store.sessions().count == 1, "Retry duplicated completion")
         }
         print("PASS: atomic automatic transition rollback and retry without duplicates or downtime")
+
+        do {
+            let store = try FocusStore(url: directory.appendingPathComponent("next-task.sqlite"))
+            var first = FocusTask(title: "First", plannedDay: day, sortOrder: 0)
+            let next = FocusTask(title: "Next", plannedDay: day, sortOrder: 1)
+            let otherDay = FocusTask(title: "Tomorrow", plannedDay: "2026-11-19", sortOrder: -1)
+            for task in [first, next, otherDay] { try store.saveTask(task) }
+            let controller = try SessionController(store: store)
+            try controller.select(phase: .focus, work: 1, rest: 1)
+            try controller.selectTask(first)
+            try controller.toggle(now: 0, date: instant)
+            first.isCompleted = true
+            try store.saveTask(first)
+            try controller.reconcileCompletedTask()
+            try expect(controller.active.taskID == first.id, "Active focus must retain its original task")
+            _ = try controller.refresh(now: 60, date: instant.addingTimeInterval(60), autoAdvance: true)
+            try expect(controller.active.taskID == next.id, "Completed task must advance within the same day")
+            try expect(store.sessions().first?.taskID == first.id, "Task advance must retain historical attribution")
+            try controller.pause(now: 60, date: instant.addingTimeInterval(60))
+            try store.deleteTask(id: next.id)
+            try controller.reconcileCompletedTask()
+            try expect(controller.active.taskID == nil, "Deleted idle task must be cleared")
+            let restored = try SessionController(store: store)
+            try expect(restored.active.taskID == nil, "Cleared task must survive restart")
+        }
+        print("PASS: completed-task handoff, same-day selection, historical attribution and deleted-task recovery")
 
         var gridCalendar = Calendar(identifier: .gregorian)
         gridCalendar.timeZone = TimeZone(identifier: "Europe/Berlin")!

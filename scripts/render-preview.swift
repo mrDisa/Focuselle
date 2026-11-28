@@ -47,7 +47,7 @@ struct RenderPreview {
         state.language = "en"
         try snapshot(state: state, dark: true, name: "focuselle-controls-en", directory: directory, width: 650, height: 700, holdCommand: true)
         let manager = FileManager.default
-        for name in ["focuselle-light", "focuselle-dark", "classic-light", "classic-dark", "settings-ru"] {
+        for name in ["focuselle-light", "focuselle-dark", "classic-light", "classic-dark", "midnight-light", "midnight-dark", "settings-ru"] {
             let destination = root.appendingPathComponent("media/screenshots/" + name + ".png")
             try? manager.removeItem(at: destination)
             try manager.copyItem(at: directory.appendingPathComponent(name + ".png"), to: destination)

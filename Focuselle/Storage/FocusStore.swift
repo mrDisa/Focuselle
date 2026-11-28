@@ -73,6 +73,11 @@ final class FocusStore {
                   .number(Double(preset.longBreakMinutes)), .number(Double(preset.longBreakFrequency)), .number(preset.isPinned ? 1 : 0)])
     }
 
+    func deleteCustomPreset(id: String) throws {
+        guard id.hasPrefix("custom-") else { return }
+        try database.execute("DELETE FROM presets WHERE id = ?", [.text(id)])
+    }
+
     func presets() throws -> [TimerPreset] {
         try database.rows("SELECT * FROM presets ORDER BY focus_minutes, id").map { row in
             TimerPreset(id: try row.string("id"), focusMinutes: Int(try row.double("focus_minutes")),

@@ -25,8 +25,34 @@ enum Theme: String, CaseIterable { case system, light, dark
 
 enum VisualStyle: String, CaseIterable {
     // Keep stored identifiers stable when renaming the styles in the interface.
-    case focuselle, classic
-    var title: String { self == .focuselle ? "Classic" : "Olive" }
+    case focuselle, classic, midnight
+
+    var title: String {
+        switch self {
+        case .focuselle: "Classic"
+        case .classic: "Olive"
+        case .midnight: "Midnight"
+        }
+    }
+}
+
+enum TimerFace: String, CaseIterable {
+    case ring, scale, minimal
+    var title: String {
+        switch self {
+        case .ring: "Ring"
+        case .scale: "Scale"
+        case .minimal: "Minimal"
+        }
+    }
+    func title(language: String) -> String {
+        guard language == "ru" else { return title }
+        switch self {
+        case .ring: return "Кольцо"
+        case .scale: return "Шкала"
+        case .minimal: return "Минимал"
+        }
+    }
 }
 
 enum AppLanguage: String, CaseIterable {
@@ -63,6 +89,7 @@ final class AppState: ObservableObject {
     @Published var timer = FocusTimer()
     @Published var showPlan: Bool { didSet { defaults.set(showPlan, forKey: "showPlan") } }
     @Published var visualStyle: VisualStyle { didSet { defaults.set(visualStyle.rawValue, forKey: "visualStyle") } }
+    @Published var timerFace: TimerFace { didSet { defaults.set(timerFace.rawValue, forKey: "timerFace") } }
     @Published var theme: Theme { didSet { defaults.set(theme.rawValue, forKey: "theme") } }
     @Published var language: String { didSet { defaults.set(language, forKey: "language") } }
     @Published var soundEnabled: Bool { didSet { defaults.set(soundEnabled, forKey: "soundEnabled") } }
@@ -99,6 +126,7 @@ final class AppState: ObservableObject {
         autoAdvance = defaults.object(forKey: "autoAdvance") as? Bool ?? true
         let savedStyle = defaults.string(forKey: "visualStyle") ?? "focuselle"
         visualStyle = VisualStyle(rawValue: savedStyle == "olive" ? "classic" : savedStyle) ?? .focuselle
+        timerFace = TimerFace(rawValue: defaults.string(forKey: "timerFace") ?? "") ?? (savedStyle == "focuselle" ? .scale : .ring)
         theme = Theme(rawValue: defaults.string(forKey: "theme") ?? "system") ?? .system
         language = AppLanguage.preferred([defaults.string(forKey: "language")].compactMap { $0 } + Locale.preferredLanguages)
         showPlan = defaults.object(forKey: "showPlan") as? Bool ?? true
@@ -175,6 +203,32 @@ final class AppState: ObservableObject {
         guard storageReady else { return }
         perform { try controller?.select(phase: .focus, work: work, rest: rest) }
     }
+    func saveCustomPreset(work: Int, rest: Int, editingID: String? = nil) {
+        guard storageReady, !timer.isRunning, !hasProgress,
+              (1...240).contains(work), (1...120).contains(rest) else { return }
+        perform {
+            let id = editingID.flatMap { $0.hasPrefix("custom-") ? $0 : nil }
+                ?? presets.first { $0.focusMinutes == work && $0.shortBreakMinutes == rest }?.id
+                ?? "custom-" + UUID().uuidString
+            if id.hasPrefix("custom-") {
+                try store?.savePreset(TimerPreset(id: id, focusMinutes: work, shortBreakMinutes: rest))
+            }
+            try controller?.select(phase: .focus, work: work, rest: rest)
+            try reload()
+        }
+    }
+
+    func removeCustomPreset(_ preset: TimerPreset) {
+        guard storageReady, !timer.isRunning, !hasProgress, preset.id.hasPrefix("custom-") else { return }
+        perform {
+            if workMinutes == preset.focusMinutes && restMinutes == preset.shortBreakMinutes {
+                try controller?.select(phase: .focus, work: 25, rest: 5)
+            }
+            try store?.deleteCustomPreset(id: preset.id)
+            try reload()
+        }
+    }
+
     private func tick() {
         guard timer.isRunning, storageReady else { return }
         perform {
@@ -212,13 +266,13 @@ final class AppState: ObservableObject {
         var updated = task
         updated.title = updated.title.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !updated.title.isEmpty else { return false }
-        perform { try store?.saveTask(updated); try reload() }
+        perform { try store?.saveTask(updated); try controller?.reconcileCompletedTask(); try reload() }
         return storageError == nil
     }
 
     func deleteTask(_ task: FocusTask) {
         guard storageReady else { return }
-        perform { try store?.deleteTask(id: task.id); try reload() }
+        perform { try store?.deleteTask(id: task.id); try controller?.reconcileCompletedTask(); try reload() }
     }
 
     func newTask() {
@@ -232,6 +286,7 @@ final class AppState: ObservableObject {
             updated.isCompleted.toggle()
             updated.completedAt = updated.isCompleted ? Date() : nil
             try store?.saveTask(updated)
+            try controller?.reconcileCompletedTask()
             try reload()
         }
     }

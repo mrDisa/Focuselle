@@ -86,7 +86,7 @@ struct TaskEditorView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 18) {
             Text(state.text(state.tasks.contains { $0.id == draft.id } ? "editTask" : "newTask"))
-                .font(.system(size: 24, weight: .semibold, design: state.visualStyle == .classic ? .rounded : .default))
+                .font(.system(size: 24, weight: .semibold, design: .rounded))
             Text(state.text("taskTitle")).font(.caption).foregroundStyle(.secondary)
             TextField(state.text("taskTitle"), text: $draft.title).textFieldStyle(.roundedBorder)
             Text(state.text("taskDescription")).font(.caption).foregroundStyle(.secondary)
@@ -108,7 +108,7 @@ struct TaskEditorView: View {
                     .disabled(draft.title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || !state.storageReady)
             }
         }.padding(28).frame(width: 440)
-            .background { if state.visualStyle == .focuselle { palette.background } }
+            .background(palette.background)
             .tint(palette.accent)
             .preferredColorScheme(state.theme.scheme).environment(\.locale, state.locale)
     }
@@ -125,10 +125,8 @@ struct StatisticsView: View {
             HStack {
                 PlannerDatePicker(state: state)
                 Spacer()
-                Picker(state.text("statisticsPeriod"), selection: $range) {
-                    Text(state.text("sevenDays")).tag(7)
-                    Text(state.text("thirtyDays")).tag(30)
-                }.pickerStyle(.segmented).labelsHidden().frame(width: 150)
+                FocusSegments(selection: $range, options: [(7, state.text("sevenDays")), (30, state.text("thirtyDays"))], palette: palette)
+                    .frame(width: 174)
             }
             HStack(spacing: 12) {
                 metric("timer", title: "focusTime", value: duration(insights.totalSeconds))
@@ -192,7 +190,7 @@ struct StatisticsView: View {
         VStack(alignment: .leading, spacing: 12) {
             Label(state.text(title), systemImage: icon).font(.system(size: 11)).foregroundStyle(.secondary)
                 .lineLimit(2).frame(height: 28, alignment: .topLeading)
-            Text(value).font(.system(size: 22, weight: .medium, design: state.visualStyle == .classic ? .rounded : .default)).monospacedDigit()
+            Text(value).font(.system(size: 22, weight: .medium, design: .rounded)).monospacedDigit()
         }.frame(maxWidth: .infinity, alignment: .leading).padding(16)
             .background(palette.surface, in: RoundedRectangle(cornerRadius: palette.radius(14)))
     }
@@ -245,7 +243,7 @@ struct PlannerCalendarView: View {
                     VStack(alignment: .leading, spacing: 5) {
                         Text(state.text("dayPlan")).font(.system(size: 11, weight: .medium)).foregroundStyle(.secondary)
                         Text(state.selectedDate.formatted(.dateTime.locale(state.locale).weekday(.wide).day().month(.wide)))
-                            .font(.system(size: 20, weight: .medium, design: state.visualStyle == .classic ? .rounded : .default))
+                            .font(.system(size: 20, weight: .medium, design: .rounded))
                     }
                     Spacer()
                     Button { state.newTask() } label: {
@@ -271,7 +269,7 @@ struct PlannerCalendarView: View {
         VStack(alignment: .leading, spacing: 12) {
             Label(state.text(title), systemImage: icon).font(.system(size: 11)).foregroundStyle(.secondary)
                 .lineLimit(2).frame(height: 28, alignment: .topLeading)
-            Text(value).font(.system(size: 20, weight: .medium, design: state.visualStyle == .classic ? .rounded : .default)).monospacedDigit()
+            Text(value).font(.system(size: 20, weight: .medium, design: .rounded)).monospacedDigit()
                 .lineLimit(1).minimumScaleFactor(0.7)
         }.frame(maxWidth: .infinity, alignment: .leading).padding(16)
             .background(palette.surface, in: RoundedRectangle(cornerRadius: palette.radius(14)))
@@ -303,7 +301,7 @@ struct MonthCalendarView: View {
         VStack(spacing: small ? 16 : 24) {
             HStack(spacing: 10) {
                 Text(month.formatted(.dateTime.locale(state.locale).month(.wide).year()))
-                    .font(.system(size: small ? 17 : 25, weight: .medium, design: state.visualStyle == .classic ? .rounded : .default))
+                    .font(.system(size: small ? 17 : 25, weight: .medium, design: .rounded))
                 Spacer(minLength: 4)
                 Button(state.text("today")) {
                     state.selectedDate = Date()

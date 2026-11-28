@@ -7,11 +7,12 @@ struct SettingsView: View {
     var body: some View {
         Form {
             Section(state.text("appearance")) {
-                Picker(state.text("visualStyle"), selection: $state.visualStyle) {
-                    ForEach(VisualStyle.allCases, id: \.self) { style in
-                        Text(style.title).tag(style)
-                    }
-                }.pickerStyle(.segmented)
+                HStack {
+                    Text(state.text("visualStyle"))
+                    Spacer(minLength: 12)
+                    FocusSegments(selection: $state.visualStyle, options: VisualStyle.allCases.map { ($0, $0.title) }, palette: palette)
+                        .frame(maxWidth: 300)
+                }
                 ThemeSwatches(state: state)
                 Picker(state.text("language"), selection: $state.language) {
                     ForEach(AppLanguage.allCases, id: \.rawValue) { language in
@@ -21,6 +22,13 @@ struct SettingsView: View {
                 Toggle(state.text("dayPlan"), isOn: $state.showPlan)
             }
             Section(state.text("timerSettings")) {
+                VStack(alignment: .leading, spacing: 10) {
+                    Text(state.language == "ru" ? "Вид таймера" : "Timer appearance")
+                        .font(.system(size: 12, weight: .medium))
+                    FocusSegments(selection: $state.timerFace,
+                                  options: TimerFace.allCases.map { ($0, $0.title(language: state.language)) },
+                                  palette: palette)
+                }.padding(.vertical, 4)
                 Toggle(state.text("autoAdvance"), isOn: $state.autoAdvance)
                 Text(state.text("autoAdvanceDetail")).font(.caption).foregroundStyle(.secondary)
                 Toggle(state.text("transitionSounds"), isOn: $state.soundEnabled)
@@ -43,7 +51,7 @@ struct SettingsView: View {
                 Text(state.text("sleepPolicy")).foregroundStyle(.secondary)
                 Text(state.text("prototypeNotice")).foregroundStyle(.secondary)
             }
-        }.formStyle(.grouped).scrollContentBackground(state.visualStyle == .classic ? .visible : .hidden).background(palette.background)
+        }.formStyle(.grouped).scrollContentBackground(.hidden).background(palette.background)
     }
 }
 
@@ -92,5 +100,31 @@ private struct ThemeSwatches: View {
                 }
             }
         }
+    }
+}
+
+
+struct FocusSegments<Value: Hashable>: View {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Binding var selection: Value
+    let options: [(Value, String)]
+    let palette: FocusPalette
+
+    var body: some View {
+        HStack(spacing: 3) {
+            ForEach(options.indices, id: \.self) { index in
+                let option = options[index]
+                let selected = selection == option.0
+                Button { selection = option.0 } label: {
+                    Text(option.1).font(.system(size: 11, weight: selected ? .semibold : .medium))
+                        .lineLimit(1).frame(maxWidth: .infinity).padding(.vertical, 7)
+                        .foregroundStyle(selected ? palette.selectionInk : palette.ink.opacity(0.65))
+                        .background(selected ? palette.accent : Color.clear, in: RoundedRectangle(cornerRadius: 7))
+                        .contentShape(Rectangle())
+                }.buttonStyle(FocusPressStyle()).accessibilityAddTraits(selected ? .isSelected : [])
+            }
+        }.padding(3).background(palette.surface, in: RoundedRectangle(cornerRadius: 10))
+            .overlay(RoundedRectangle(cornerRadius: 10).strokeBorder(palette.border))
+            .animation(reduceMotion ? nil : .easeInOut(duration: 0.22), value: selection)
     }
 }

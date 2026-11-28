@@ -42,6 +42,21 @@ struct AppearanceTests {
                 }
             }
         }
+        state.visualStyle = .midnight
+        state.timerFace = .minimal
+        let reopened = AppState(defaults: defaults, storageURL: temporary.appendingPathComponent("test.sqlite"), resourceBundle: bundle)
+        precondition(reopened.visualStyle == .midnight && reopened.timerFace == .minimal, "Retain Midnight and independent timer face")
+        precondition(matches(FocusPalette(phase: .focus, dark: true, style: .midnight).background, 0x0D1117))
+        state.saveCustomPreset(work: 42, rest: 7)
+        let custom = state.presets.first { $0.focusMinutes == 42 && $0.shortBreakMinutes == 7 }!
+        state.saveCustomPreset(work: 43, rest: 8, editingID: custom.id)
+        precondition(state.presets.filter { $0.id == custom.id }.count == 1)
+        precondition(state.workMinutes == 43 && state.restMinutes == 8, "Edited preset must be applied")
+        state.saveCustomPreset(work: 0, rest: 8)
+        precondition(state.workMinutes == 43, "Reject invalid custom duration")
+        state.removeCustomPreset(state.presets.first { $0.id == custom.id }!)
+        precondition(!state.presets.contains { $0.id == custom.id })
+        precondition(state.workMinutes == 25 && state.restMinutes == 5, "Deleting active preset returns to default")
         precondition(AppLanguage.preferred(["zh-CN"]) == "zh-Hans")
         precondition(AppLanguage.preferred(["pt-PT"]) == "pt-BR")
         precondition(AppLanguage.preferred(["ja-JP"]) == "ja")

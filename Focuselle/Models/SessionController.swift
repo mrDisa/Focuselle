@@ -18,6 +18,7 @@ final class SessionController {
             timer = FocusTimer()
             active = Self.idle(phase: .focus, work: 25, rest: 5)
         }
+        try reconcileCompletedTask()
     }
 
     func toggle(now: TimeInterval, date: Date, timeZone: TimeZone = .current, autoAdvance: Bool = false) throws {
@@ -73,8 +74,9 @@ final class SessionController {
         var finished = previous
         finished.remaining = 0
         let phase: FocusTimer.Phase = previous.phase == .focus ? .shortBreak : .focus
+        let (nextID, nextTitle) = try nextTask(after: previous)
         var replacement = Self.idle(phase: phase, work: previous.workMinutes, rest: previous.restMinutes,
-                                    taskID: previous.taskID, taskTitle: previous.taskTitle)
+                                    taskID: nextID, taskTitle: nextTitle)
         replacement.startedAt = date
         replacement.localDay = LocalDay.string(date, timeZone: timeZone)
         replacement.timeZoneID = timeZone.identifier
@@ -107,8 +109,9 @@ final class SessionController {
         snapshot.remaining = previous.remaining
         let recorded = snapshot.startedAt != nil && snapshot.duration > snapshot.remaining
             ? session(snapshot, endedAt: date, completed: justCompleted || snapshot.remaining == 0) : nil
+        let (nextID, nextTitle) = try nextTask(after: snapshot)
         let replacement = Self.idle(phase: snapshot.phase, work: snapshot.workMinutes, rest: snapshot.restMinutes,
-                                    taskID: snapshot.taskID, taskTitle: snapshot.taskTitle)
+                                    taskID: nextID, taskTitle: nextTitle)
         try store.checkpoint(replacement, session: recorded)
         active = replacement
         timer = FocusTimer(phase: replacement.phase, duration: replacement.duration, remaining: replacement.remaining)
@@ -121,6 +124,26 @@ final class SessionController {
         try store.checkpoint(replacement)
         active = replacement
         timer = FocusTimer(phase: phase, duration: replacement.duration, remaining: replacement.remaining)
+    }
+
+    private func nextTask(after interval: ActiveInterval) throws -> (String?, String?) {
+        guard let id = interval.taskID else { return (nil, nil) }
+        let tasks = try store.tasks()
+        guard let current = tasks.first(where: { $0.id == id }) else { return (nil, nil) }
+        guard current.isCompleted else { return (current.id, current.title) }
+        let next = tasks.first { $0.plannedDay == current.plannedDay && !$0.isCompleted }
+        return (next?.id, next?.title)
+    }
+
+    func reconcileCompletedTask() throws {
+        guard !timer.isRunning, timer.remaining == timer.duration else { return }
+        let (id, title) = try nextTask(after: active)
+        guard id != active.taskID || title != active.taskTitle else { return }
+        var replacement = active
+        replacement.taskID = id
+        replacement.taskTitle = title
+        try store.checkpoint(replacement)
+        active = replacement
     }
 
     func selectTask(_ task: FocusTask?) throws {
